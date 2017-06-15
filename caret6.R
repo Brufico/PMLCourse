@@ -3,6 +3,11 @@
 #' author: Jeff Leek, notes by Bruno Fischer Colonimos
 #' date: "`r format(Sys.Date(), '%d %B %Y')`"
 #' output:
+#'         html_document:
+#'             toc: yes
+#'             number_sections: yes
+#'             theme: readable
+#'
 #'         pdf_document:
 #'             toc: yes
 #'             toc_depth: 3
@@ -11,15 +16,13 @@
 #'         fontsize: 12pt
 #'         geometry: top=.5in, left=1in, right=1in, bottom = 1in, footskip = 0.3in
 #'
-#'         html_document:
-#'             toc: yes
-#'             number_sections: yes
-#'             theme: readable
 #' ---
 
 
 
-#' Lecture 2.5 : Basic Preprocessing
+#' ------------
+#'
+#' Lecture 2.5 : Covariates Creation
 #' =================================
 #'
 #' Covariates = predictors = features
@@ -67,11 +70,13 @@ spam$capitalAveSq <- spam$capitalAve^2
 
 
 #'
-#' Load example data
+#' Load + split example data
 #' -----------------
 #'
-
+#+ loadlib, include = FALSE
 library(ISLR); library(caret)
+
+#+ dataload
 data(Wage)
 inTrain <- createDataPartition(y=Wage$wage,
                                p=0.7, list=FALSE)

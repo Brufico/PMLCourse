@@ -17,8 +17,11 @@
 #'             number_sections: yes
 #' ---
 
+#' -----------------------------------------
+#'
 #' Key ideas
 #' =========
+#'
 
 #' * Fit a simple regression model
 #' * Plug in new covariates and multiply by the coefficients
@@ -38,7 +41,11 @@
 #' --------------------------------
 #'
 
-library(caret);data(faithful)
+#+ libs, echo = False
+library(caret)
+
+#+ data,
+data(faithful)
 set.seed(333)
 inTrain <- createDataPartition(y=faithful$waiting,
                                p=0.5, list=FALSE)

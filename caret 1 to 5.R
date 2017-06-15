@@ -3,6 +3,11 @@
 #' author: Jeff Leek, notes by Bruno Fischer Colonimos
 #' date: "`r format(Sys.Date(), '%d %B %Y')`"
 #' output:
+#'         html_document:
+#'             toc: yes
+#'             number_sections: yes
+#'             theme: readable
+#'
 #'         pdf_document:
 #'             toc: yes
 #'             toc_depth: 3
@@ -11,10 +16,6 @@
 #'         fontsize: 11pt
 #'         geometry: top=.9in, left=1in, right=1in, bottom = 1in, footskip = 0.3in
 #'
-#'         html_document:
-#'             toc: yes
-#'             number_sections: yes
-#'             theme: readable
 #' ---
 
 
@@ -22,8 +23,10 @@
 
 
 
+#'----------------
+#'
 #' Lecture 2.1 : The caret R package
-#'==================================
+#' ==================================
 #'
 
 #' Caret functionality
@@ -67,16 +70,7 @@
 #' -----------------------------
 #'
 
-# libraries
-# get library # does not work. improve
-# getlib <- function(libname) {
-#         if (!require(libname)) {
-#                 install.packages(libname)
-#                 library(libname)
-#
-#         }
-# }
-
+#+ getlibs, include = FALSE
 if (!require(caret)) {
         install.packages(caret)
         library(caret)
@@ -93,12 +87,19 @@ if (!require(e1071)) {
 }
 
 
-# data
+#'
+#' ### data
+#'
+#+ getdata
 data(spam)
 # View(spam)
 # colnames(spam)
 
 summary(spam$type)/ sum(summary(spam$type)) # proportion of spam/ nonspam in the data
+
+#'
+#' ### split data
+#'
 
 # partition the data ==> create InTrain = matrix[ n lines x 1 col] of ints
 # Should we not set the seed ?????? = yes
@@ -339,6 +340,7 @@ args(trainControl) # works ok
 #'     * If big this can slow things down
 
 
+#'
 #' Setting the seed
 #' ----------------
 #'
@@ -372,7 +374,7 @@ modelFit2 # this will yield exactly the same result every time
 #' ======================================================
 #'
 
-# libraries
+#+ libraries2, include=FALSE
 if (!require(ISLR)) {
         install.packages("ISLR")
         library(ISLR)
@@ -394,7 +396,9 @@ if (!require(Hmisc)) {
 library(ggplot2)
 library(caret)
 
-# get the data
+#'
+#' get the data
+#' ------------
 data(Wage)
 summary(Wage)
 
@@ -492,7 +496,7 @@ qplot(wage,colour=education,data=training,geom="density")
 #'     * Groups of points not explained by a predictor
 #'     * Skewed variables
 
-
+#'
 #' ggplot2 tutorial http://rstudio-pubs-static.s3.amazonaws.com/2176_75884214fc524dc0bc2a140573da38bb.html
 #' caret visualizations http://caret.r-forge.r-project.org/visualizations.html
 
@@ -620,7 +624,7 @@ modelFit
 #' Standardizing - Box-Cox transforms
 #' ----------------------------------
 #'
-#' Box-cox ==> trie to transform in order to make the variable approx normal
+#' Box-cox ==> tries to transform in order to make the variable approx normal
 
 preObj <- preProcess(training[,-58],method=c("BoxCox"))
 trainCapAveS <- predict(preObj,training[,-58])$capitalAve
@@ -652,12 +656,31 @@ capAveTruth <- (capAveTruth-mean(capAveTruth))/sd(capAveTruth)
 
 
 #'
-#' Standardizing - Imputing data
-#' -----------------------------
+#' Standardizing - Imputing data - comparing inputed vs true value
+#' ---------------------------------------------------------------
 #'
 
+#'One thing you can do is:  you can look at the comparison between the actual and
+#'inputed values. And we can see how close those two values are to each other.
+#'Here you can see the values are mostly very close to zero. So the imputation
+#'work relatively well
+
 quantile(capAve - capAveTruth)
+
+#' You can also do look at just the values that were imputed. So again here I'm
+#' looking at a capAve quantile of the same difference between the imputed
+#' values. And the true values, they're only for the ones that were missing. And
+#' here you can see again, most of the values are close to zero, but here we're
+#' only looking at the ones we're missing, so clearly some of them are more
+#' variable than previously.
+
 quantile((capAve - capAveTruth)[selectNA])
+
+#' And then you can look at the ones that were not the ones that we selected to
+#' be NA. And you can see that they're even closer to each other, and so the
+#' ones that got imputed are a little bit further apart. But aren't that much
+#' further apart.
+
 quantile((capAve - capAveTruth)[!selectNA])
 
 
@@ -665,12 +688,11 @@ quantile((capAve - capAveTruth)[!selectNA])
 #' Notes and further reading
 #' -------------------------
 #'
-
 #' * Training and test must be processed in the same way
 #' * Test transformations will likely be imperfect
 #'     * Especially if the test/training sets collected at different times
 #' * Careful when transforming factor variables!
-#' * preprocessing with caret : http://caret.r-forge.r-project.org/preprocess.html
+#' * [preprocessing with caret](http://caret.r-forge.r-project.org/preprocess.html)
 
 
 
