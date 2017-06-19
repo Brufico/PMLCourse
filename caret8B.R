@@ -40,8 +40,8 @@
 #' Example: Old faithful eruptions
 #' --------------------------------
 #'
-
-#+ libs, echo = False
+#'
+#+ libs, echo = FALSE
 library(caret)
 
 #+ data,
@@ -90,6 +90,8 @@ coef(lm1)[1] + coef(lm1)[2]*80
 newdata <- data.frame(waiting=80)
 predict(lm1,newdata)
 
+# REM # predict(lm1) works (newdata = original data ?)
+# predict(lm1) - predict(lm1, trainFaith)
 
 #'
 #' Plot predictions - training and test
@@ -140,6 +142,86 @@ matlines(testFaith$waiting[ord], pred1[ord,], type="l", ,col=c(1,2,2),lty = c(1,
 
 modFit <- train(eruptions ~ waiting, data=trainFaith, method = "lm")
 summary(modFit$finalModel)
+
+#'
+#' Model fit
+#' ---------
+#'
+# get coefficients from modelobject$finalModel
+# modFit$finalModel$coefficients["(Intercept)"]
+# modFit$finalModel$coefficients["waiting"]
+
+# with ggplot2
+ggplot(data = cbind(trainFaith, tpred=predict(modFit,trainFaith))) +
+        geom_point(aes(waiting, eruptions)) +
+        geom_abline(slope = modFit$finalModel$coefficients["waiting"],
+                    intercept = modFit$finalModel$coefficients["(Intercept)"])
+
+#'
+#' Plot predictions - training and test
+#' ------------------------------------
+#'
+
+# # with ggplot2 and gridExtra (not so good: axis differences)
+# gtrain <- ggplot(data = cbind(trainFaith, tpred=predict(modFit,trainFaith))) +
+#         geom_point(aes(waiting, eruptions)) +
+#         geom_abline(slope = modFit$finalModel$coefficients["waiting"],
+#                     intercept = modFit$finalModel$coefficients["(Intercept)"]) +
+#         labs(title="Training Set") + theme(plot.title = element_text(hjust = 0.5))
+#
+# gtst <- ggplot(data = cbind(testFaith, tpred=predict(modFit,testFaith))) +
+#         geom_point(aes(waiting, eruptions)) +
+#         geom_abline(slope = modFit$finalModel$coefficients["waiting"],
+#                     intercept = modFit$finalModel$coefficients["(Intercept)"]) +
+#         labs(title="Test Set") + theme(plot.title = element_text(hjust = 0.5))
+#
+# library(gridExtra)
+# grid.arrange(gtrain, gtst, ncol = 2)
+
+
+# with ggplot2 and facetting
+traintestdata <- rbind(
+        cbind(trainFaith, tpred=predict(modFit,newdata = trainFaith), set = c("Training set")),
+        cbind(testFaith, tpred=predict(modFit,newdata = testFaith), set = c("Test set"))
+)
+
+ggplot(data = traintestdata) +
+        geom_point(aes(waiting, eruptions)) +
+        geom_abline(slope = modFit$finalModel$coefficients["waiting"],
+                    intercept = modFit$finalModel$coefficients["(Intercept)"]) +
+        facet_grid(. ~ set)
+
+
+
+
+
+#'
+#' Get training set/test set errors
+#' --------------------------------
+#'
+
+# Calculate RMSE on training
+sqrt(sum((modFit$finalModel$fitted-trainFaith$eruptions)^2))
+
+# Calculate RMSE on test
+sqrt(sum((predict(modFit,newdata=testFaith)-testFaith$eruptions)^2))
+
+
+#'
+#' Prediction intervals
+#' --------------------
+#'
+
+# With ggplot2
+pred1 <- predict(modFit$finalModel,newdata=testFaith,interval="prediction")
+# colnames(pred1) #"fit" "lwr" "upr"
+ggplot(cbind(testFaith, pred1), aes(waiting, eruptions)) + geom_point() +
+        geom_line(aes(waiting, fit)) +
+        geom_line(aes(waiting, lwr), color = "red", linetype= 2) +
+        geom_line(aes(waiting, upr), color = "red", linetype= 2)
+
+
+
 
 #'
 #' Notes and further reading

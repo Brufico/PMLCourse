@@ -73,25 +73,54 @@ qplot(age,wage,colour=education,data=training)
 #' Fit a linear model
 #' ==================
 
-# $$ ED_i = b_0 + b_1 age + b_2 I(Jobclass_i="Information") + \sum_{k=1}^4 \gamma_k I(education_i= level k) $$
+#'
+#' $$ ED_i = b_0 + b_1 age + b_2 I(Jobclass_i="Information") + \sum_{k=1}^4 \gamma_k I(education_i= level k) $$
+#'
 
 modFit<- train(wage ~ age + jobclass + education,
                method = "lm",data=training)
 finMod <- modFit$finalModel
 print(modFit)
+summary(modFit) # the caret model ==
+summary(finMod) # the lm model ==  same output
 
-
-#' Education levels: 1 = HS Grad, 2 = Some College, 3 = College Grad, 4 = Advanced Degree
+#' levels(training$education) #==>
+#' Education levels: "1. < HS Grad", "2. HS Grad", "3. Some College", "4. College Grad", "5. Advanced Degree"
 #'
 
 #' Diagnostics
 #' ============
+#'
+#' Predefined diagnostics plots (on final lm model)
+#'
+#+, fig.height = 6, fig.width = 6
+curpar <- par("mfrow")
+par(mfrow=c(3,2))
+plot(finMod,1,pch=19,cex=0.5,col="#00000040") #' residuals vs fitted
+plot(finMod,which=2,pch=19,cex=0.5,col="#00000040") # Normal Q-Q plot residuals
+plot(finMod,which=3,pch=19,cex=0.5,col="#00000040") # Scale-Location = sqrt(residuals) vs fitted
+plot(finMod,which=4,pch=19,cex=0.5,col="#00000040") # Cook's distance vs index
+plot(finMod,which=5,pch=19,cex=0.5,col="#00000040") # Std residuals vs leverage (with cook's distance levels)
+plot(finMod,which=6,pch=19,cex=0.5,col="#00000040") # Cook's dist vs leverage (hi/(1-hi))
+par(mfrow=curpar)
 
-plot(finMod,1,pch=19,cex=0.5,col="#00000040")
+
+# by default
+curpar <- par("mfrow")
+par(mfrow=c(2,2))
+plot(finMod,pch=19,cex=0.5, col="#00000040")
+par(mfrow=curpar)
 
 
-train2 <- cbind(training, data.frame(fitted =finMod$fitted, resid = finMod$residuals))
-ggplot(data = train2, aes(fitted, resid)) + geom_point( color = "lightgrey")
+# methods(plot)
+# plot.lm unknown
+# args(plot.lm)
+
+#' residuals vs fitted via ggplot2
+train2 <- cbind(training, data.frame(fitted = finMod$fitted, resid = finMod$residuals))
+ggplot(data = train2, aes(fitted, resid)) +
+        geom_point( color = "#00000040") +
+        geom_smooth(color = "red", method = "loess")
 
 
 
@@ -108,7 +137,7 @@ ggplot(data = train2, aes(fitted, resid, color = race)) + geom_point()
 
 
 #'
-#' Plot by index
+#' Plot residuals by index
 #' ------------
 #'
 plot(finMod$residuals, pch=19)
