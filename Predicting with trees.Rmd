@@ -4,19 +4,9 @@ subtitle:
 author:  "Jeff Leek, notes by Bruno Fischer Colonimos"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
 output:
-        pdf_document:
-            toc: yes
-            toc_depth: 3
-            number_sections: yes
-        urlcolor : blue
-        fontsize: 11pt
-        geometry: top=.9in, left=1in, right=1in, bottom = 1in, footskip = 0.3in
-
-        html_document:
-            theme: readable
-            toc: yes
-            number_sections: yes
-
+   pdf_document:
+     number_sections: yes
+     toc: yes
 ---
 
 ----------------
@@ -28,7 +18,7 @@ library(xtable)
 
 options(width = 100)
 
-opts_chunk$set(message = F, error = F, warning = F, comment = NA, fig.align = 'center', dpi = 100, tidy = F, cache=TRUE, cache.path = '.cache/', fig.path = 'fig/')
+opts_chunk$set(message = F, error = F, warning = F, comment = NA, fig.align = 'center',  cache.path = '.cache/', fig.path = 'fig/')
 
 options(xtable.type = 'html')
 knit_hooks$set(inline = function(x) {
@@ -41,7 +31,22 @@ knit_hooks$set(inline = function(x) {
 knit_hooks$set(plot = knitr:::hook_plot_html)
 ```
 
+```{r libs,include=FALSE}
+library(caret)
 
+getlib <- function(libname) {
+        if (!require(libname, character.only = TRUE)) {
+                install.packages(libname)
+                library(libname, character.only = TRUE)
+
+        }
+}
+
+getlib("rattle")
+
+# install.packages('rpart.plot') # must be installed (once)
+
+```
 
 
 
@@ -88,15 +93,30 @@ Basic algorithm
 Measures of impurity
 ====================
 
+__Probability that an object of the mth leaf is part of the kth class__
+
+Here are different measures of impurity. They're all based on this probability that you can estimate: p hat for the mth leaf and the kth class:\
+In the **m** leaf  you have $N_m$ total objects that you might consider, and you can count the number of times that a particular class **k** appears in that leaf. So p hat is the number of times that class k appears in leaf m divided by $N_m$ :
+
 $$\hat{p}_{mk} = \frac{1}{N_m}\sum_{x_i\; in \; Leaf \; m}\mathbb{1}(y_i = k)$$
 
 __Misclassification Error__: 
-$$ 1 - \hat{p}_{m k(m)}; k(m) = {\rm most; common; k}$$ 
+
+The misclassification error is 1 minus the probability that you're equal to the most common class in that particular leaf. So for example, if it's a leaf where almost all of the counties would vote for Barack Obama, then 1 minus the misclassification error is 1 minus the probability that you'd vote for Barack Obama. 
+$$ 1 - \hat{p}_{m k(m)} \quad ; \quad k(m) = {\rm most \  common \ k}$$ 
+Values:
+
 * 0 = perfect purity
 * 0.5 = no purity
 
 __Gini index__:
+
+The Gini index (which is not to be confused with the Gini coefficient in economics). (*is it for 2 classes only??*)\
+It's basically 1 minus the sum of the squared probabilities that you belong to any of the different classes. 
+
 $$ \sum_{k \neq k'} \hat{p}_{mk} \times \hat{p}_{mk'} = \sum_{k=1}^K \hat{p}_{mk}(1-\hat{p}_{mk}) = 1 - \sum_{k=1}^K p_{mk}^2$$
+
+Values: So again zero means perfect purity. In other words the class has one particular class which has probability equal to 1 and all the other classes have probability equal to 0. 0.5 means no purity. In other words, all of the classes are perfectly balanced within each leaf. 
 
 * 0 = perfect purity
 * 0.5 = no purity
@@ -106,31 +126,38 @@ http://en.wikipedia.org/wiki/Decision_tree_learning
 
 __Deviance/information gain__:
 
+Deviance and information gain is another measure that can be used. It's called **deviance** if you use log with base e here, and with log base 2 it is **information gain**. And it's basically minus the sum of the probability of being assigned to class **k** (*or belonging to class k?*) in leaf **m** times the log (base 2 or base e), of that same probability. 
+
 $$ -\sum_{k=1}^K \hat{p}_{mk} \log_2\hat{p}_{mk} $$
+Values
+
 * 0 = perfect purity
 * 1 = no purity
 
 http://en.wikipedia.org/wiki/Decision_tree_learning
 
 
---- &twocol w1:50% w2:50%
-## Measures of impurity
 
-*** =left
 
-```{r leftplot,fig.height=3,fig.width=4,echo=FALSE,fig.align="center"}
-par(mar=c(0,0,0,0)); set.seed(1234); x = rep(1:4,each=4); y = rep(1:4,4)
+
+Measures of impurity, Example
+-----------------------------
+
+
+```{r leftplot, fig.height=3, fig.width=4, echo=FALSE, fig.align="center"}
+# par(mar=c(0,0,0,0)); set.seed(1234); 
+x = rep(1:4,each=4); y = rep(1:4,4)
 plot(x,y,xaxt="n",yaxt="n",cex=3,col=c(rep("blue",15),rep("red",1)),pch=19)
 ```
 
-* __Misclassification:__ $1/16 = 0.06$
-* __Gini:__ $1 - [(1/16)^2 + (15/16)^2] = 0.12$
-* __Information:__$-[1/16 \times log2(1/16) + 15/16 \times log2(15/16)] = 0.34$
+* **Misclassification:** $1/16 = 0.06$
+* **Gini:** $1 - [(1/16)^2 + (15/16)^2] = 0.12$
+* **Information**$-[1/16 \times log2(1/16) + 15/16 \times log2(15/16)] = 0.34$
 
-*** =right
 
-```{r,dependson="leftplot",fig.height=3,fig.width=4,echo=FALSE,fig.align="center"}
-par(mar=c(0,0,0,0)); 
+
+```{r, fig.height=3, fig.width=4, echo=FALSE, fig.align="center"}
+# par(mar=c(0,0,0,0)); 
 plot(x,y,xaxt="n",yaxt="n",cex=3,col=c(rep("blue",8),rep("red",8)),pch=19)
 ```
 
@@ -139,6 +166,94 @@ plot(x,y,xaxt="n",yaxt="n",cex=3,col=c(rep("blue",8),rep("red",8)),pch=19)
 * __Information:__$-[1/16 \times log2(1/16) + 15/16 \times log2(15/16)] = 1$
 
 
+---
+
+
+Example: Iris Data
+------------------
+
+```{r iris, cache=TRUE}
+data(iris); library(ggplot2)
+names(iris)
+table(iris$Species)
+```
 
 
 ---
+
+## Create training and test sets
+
+```{r trainingTest, dependson="iris",cache=TRUE}
+inTrain <- createDataPartition(y=iris$Species,
+                              p=0.7, list=FALSE)
+training <- iris[inTrain,]
+testing <- iris[-inTrain,]
+dim(training); dim(testing)
+```
+
+
+---
+
+## Iris petal widths/sepal width
+
+```{r, dependson="trainingTest",fig.height=4,fig.width=6}
+#qplot(Petal.Width,Sepal.Width,colour=Species,data=training)
+ggplot(data = training, aes(Petal.Width, Sepal.Width, colour=Species)) + geom_point()
+
+```
+
+---
+
+## Tree creation, Iris petal widths/sepal width
+
+```{r createTree, dependson="trainingTest", cache=TRUE}
+library(caret)
+modFit <- train(Species ~ .,method="rpart",data=training)
+print(modFit$finalModel)
+```
+
+---
+
+
+## Plot tree
+
+```{r, dependson="createTree", fig.height=4.5, fig.width=4.5}
+plot(modFit$finalModel, uniform=TRUE, 
+      main="Classification Tree")
+text(modFit$finalModel, use.n=TRUE, all=TRUE, cex=.8)
+```
+
+
+---
+
+## Prettier plots
+
+```{r, dependson="createTree", fig.height=4.5, fig.width=4.5}
+library(rattle)
+fancyRpartPlot(modFit$finalModel)
+```
+
+---
+
+
+## Predicting new values
+
+```{r newdata, dependson="createTree", fig.height=4.5, fig.width=4.5, cache=TRUE}
+predict(modFit,newdata=testing)
+```
+
+---
+
+## Notes and further resources
+
+* Classification trees are non-linear models
+  * They use interactions between variables
+  * Data transformations may be less important (monotone transformations)
+  * Trees can also be used for regression problems (continuous outcome)
+* Note that there are multiple tree building options
+in R both in the caret package - [party](http://cran.r-project.org/web/packages/party/index.html), [rpart](http://cran.r-project.org/web/packages/rpart/index.html) and out of the caret package - [tree](http://cran.r-project.org/web/packages/tree/index.html)
+* [Introduction to statistical learning](http://www-bcf.usc.edu/~gareth/ISL/)
+* [Elements of Statistical Learning](http://www-stat.stanford.edu/~tibs/ElemStatLearn/)
+* [Classification and regression trees](http://www.amazon.com/Classification-Regression-Trees-Leo-Breiman/dp/0412048418)
+
+
