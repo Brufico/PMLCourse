@@ -1,0 +1,21 @@
+---
+title: "List of files"
+author: "BFC"
+date: "16 juin 2017"
+output:
+  html_document: default
+---
+
+* Week one
+    * PML Week 1.Rmd
+* Week 2
+    * caret 1 to 5.R
+    * caret6.R
+    * caret7B.R
+    * caret8B.R
+    * caret9B.R
+* Week 3
+    * Predicting with trees.Rmd
+    
+  
+
