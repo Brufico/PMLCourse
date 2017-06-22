@@ -2,44 +2,201 @@
 title: "Practical Machine Learning - Week 3 - Bagging"
 author: "Jeff Leek, notes by Bruno Fischer Colonimos"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
-output: 
-  pdf_document: 
+urlcolor: "blue"
+output:
+  pdf_document:
     number_sections: yes
     toc: yes
-  html_document: 
+  html_document:
     number_sections: yes
     theme: readable
     toc: yes
-  beamer_presentation:
-    number_sections: yes
-    toc: yes
 ---
 
+------
+# Required packages (install before running)
+
+"caret", "party", "ElemStatLearn"
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
 
-This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
-
-## Slide with Bullets
-
-- Bullet 1
-- Bullet 2
-- Bullet 3
-
-## Slide with R Output
-
-```{r cars, echo = TRUE}
-summary(cars)
+```{r libs, include=FALSE}
+library(caret)
+library(party)
 ```
 
-## Slide with Plot
 
-```{r pressure}
-plot(pressure)
+# Bootstrap aggregating (bagging)
+
+__Basic idea__: 
+
+1. Resample cases and recalculate predictions
+2. Average or majority vote
+
+__Notes__:
+
+* Similar bias 
+* Reduced variance
+* More useful for non-linear functions
+
+More: 
+[http://en.wikipedia.org/wiki/Bootstrap_aggregating](http://en.wikipedia.org/wiki/Bootstrap_aggregating)
+
+
+# Example Ozone 
+
+## data
+
+```{r ozoneData, cache=TRUE}
+library(ElemStatLearn); data(ozone,package="ElemStatLearn")
+ozone <- ozone[order(ozone$ozone),]
+head(ozone)
 ```
+
+I'm going to try to predict temperature as a function of ozone.
+The first thing that we can do is just show you an example of how this works
+
+
+## Bagged loess
+
+
+### Resample and predict with loess
+
+The basic idea is, I'm going to create a matrix here and it's going to have 10 rows and a 155 columns. Then I'm going to resample the data set ten different times, so then a loop over ten different samples of the data set. Each time I'm going to sample width replacement from the entire data set. 
+
+
+
+```{r baggedOzone, dependson="ozoneData",cache=TRUE}
+set.seed(1357)
+
+ll <- matrix(NA,nrow=10,ncol=155) # the matrix
+# loop
+for(i in 1:10){ 
+  ss <- sample(1:dim(ozone)[1], replace=T) # resample
+  ozone0 <- ozone[ss,] # resampled dataset
+  ozone0 <- ozone0[order(ozone0$ozone),] # reordered by ozone
+  loess0 <- loess(temperature ~ ozone,data=ozone0,span= 0.3)
+  ll[i,] <- predict(loess0,newdata=data.frame(ozone=1:155))
+}
+```
+
+
+## Bagged loess
+
+```{r, dependson="baggedOzone",fig.height=4.5,fig.width=4.5}
+plot(ozone$ozone,ozone$temperature,pch=19,cex=0.5)
+for(i in 1:10){
+        lines(1:155,ll[i,],col="grey",lwd=2)
+}
+lines(1:155,apply(ll,2,mean),col="red",lwd=2)
+```
+
+
+# Bagging in caret
+
+* Some models perform bagging for you, in `train` function consider `method` options 
+    * `bagEarth` 
+    * `treebag`
+    * `bagFDA`
+* Alternatively you can bag any model you choose using the `bag` function. (You can actually build your own bagging function in caret. This is a bit of an advanced use and so I recommend that you read the documentation carefully if you're going to be trying to do that yourself)
+
+
+
+## More bagging in caret, Example of custom bagging
+
+You basically are going to take your predictor variable and put it into one data frame. (So I'm going to make the predictors be a data frame that contains the ozone data). 
+Then you have your outcome variable (Here's it's going to be just the temperature variable from the data set). 
+And I pass this to the bag function in caret package. So I tell it:
+
+* I want to use the predictors from that data frame, 
+* this is my outcome, 
+* this is the number of replications with the number of sub samples I'd like to take from the data set. 
+* And then bagControl tells me something about how I'm going to fit the model. 
+    * So fit is the function that's going to be applied to fit the model every time. This could be a call to the _train_ function in the caret package. 
+    * Predict is a the way that given a particular model fit, that we'll be able to predict new values. So this could be, for example, a call to the predict function from a trained model. 
+    * And then aggregate is the way that we'll put the predictions together. So for example it could average the predictions across all the different replicated samples. 
+
+
+
+
+```{r bag1, cache=TRUE}
+set.seed(1357)
+
+predictors = data.frame(ozone=ozone$ozone)
+temperature = ozone$temperature
+treebag <- bag(predictors, temperature, B = 10,
+                bagControl = bagControl(fit = ctreeBag$fit,
+                                        predict = ctreeBag$pred,
+                                        aggregate = ctreeBag$aggregate))
+```
+
+
+We plot the resulting predictions:
+
+```{r,dependson="bag1",fig.height=4,fig.width=4}
+plot(ozone$ozone,temperature,col='lightgrey',pch=19)
+points(ozone$ozone,predict(treebag$fits[[1]]$fit,predictors),pch=19,col="red")
+points(ozone$ozone,predict(treebag,predictors),pch=19,col="blue")
+```
+
+If you look at this custom bag version of the conditional regression trees, you can see that it gets some of the benefit that I was showing you in the previous slide with bag loess. So the idea here is I'm plotting ozone again on the x-axis versus temperature on the y-axis. The little grey dots represent actual observed values. The red dots represent the fit from a single conditional regression tree. And so you can see that for example, it doesn't capture the trend that's going on down here very well, the red line is just flat, even though there appears to be a trend upward in the data points here. But when I average over ten different bagged model model fits with these conditional regression trees. I see that there's an increase here in the values in the blue fit, which is the fit from the bagged regression. 
+
+
+http://www.inside-r.org/packages/cran/caret/docs/nbBag
+
+
+## Parts of bagging
+
+We're going to look a little bit at those different parts of the bagging function. In this particular case I'm using the ctreeBag function, which you can look at in, if you've loaded the caret package in R.
+
+### `fit`
+
+So, for the fit part it takes the data frame and the outcome that we've passed  that, and it basically uses the ctree function to train a tree, (conditional regression tree) on the data set. This is the last command (the `ctree` command). So it returns this model fit from the ctree function. 
+
+```{r}
+ctreeBag$fit
+```
+
+
+### `predict`
+
+
+The prediction takes in the object from the ctree model fit, and a new data set x, and it's going to get a new prediction. 
+So what you can see here is it basically calculates each time the _tree response_ or the outcome from the object and the new data. It then calculates this probability matrix and returns either the actually the observed levels that it predicts or it actually re, just returns the response, the predicted response from the variable. 
+
+
+```{r}
+ctreeBag$pred
+```
+
+### `aggregate`
+
+The aggregation then takes those values and averages them together or puts them together in some way. 
+
+So here what this is doing: is it's basically getting the prediction from every single one of these model fits, so that' s across a large number of observations. And then it binds them together into one data matrix by with each row being equal to the prediction from one of the model predictions. And then it takes the median at every value. So in other words it takes the median prediction from each of the different model fits across all the bootstrap samples
+
+
+
+```{r}
+ctreeBag$aggregate
+```
+
+## Notes and further resources
+
+__Notes__:
+
+* remember that the basic idea is to basically resample your data, refit your nonlinear model, then average those model fits together over resamples to get a smoother model fit than you would've got from any individual fit on its own 
+* Bagging is most useful for nonlinear models
+* Often used with trees - an extension is random forests
+* Several models use bagging in caret's _train_ function
+
+__Further resources__:
+
+* [Bagging](http://en.wikipedia.org/wiki/Bootstrap_aggregating)
+* [Bagging and boosting](http://stat.ethz.ch/education/semesters/FS_2008/CompStat/sk-ch8.pdf)
+* [Elements of Statistical Learning](http://www-stat.stanford.edu/~tibs/ElemStatLearn/)
+
 
