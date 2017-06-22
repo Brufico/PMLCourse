@@ -5,11 +5,11 @@ date: "`r format(Sys.Date(), '%d %B %Y')`"
 geometry: margin = 0.7in
 urlcolor: "blue"
 output:
-  html_document:
+  pdf_document:
     number_sections: yes
     toc: yes
     toc_depth: 3
-  pdf_document:
+  html_document:
     number_sections: yes
     toc: yes
     toc_depth: 3
@@ -92,9 +92,9 @@ for(i in 1:10){
 
 ## Compute bagged loess
 
-```{r, dependson="baggedOzone", warning=FALSE, fig.align = "center", fig.width = 5, fig.asp = 0.75}
+```{r, dependson="baggedOzone", warning=FALSE, fig.align = "center", fig.width = 5, fig.asp = 0.75, out.width = "0.48\\textwidth"}
 
-# chunk option out.width = "0.48\\textwidth" in HTML does not print
+# chunk option  , out.width = "0.48\\textwidth" in HTML does not print
 
 # VOriginale (jleek)
 # plot(ozone$ozone,ozone$temperature,pch=19,cex=0.5)
@@ -171,7 +171,7 @@ treebag <- bag(predictors, temperature, B = 10,
 
 We plot the resulting predictions:
 
-```{r,dependson="bag1", fig.align = "center", fig.width = 5, fig.asp = 0.75}
+```{r,dependson="bag1", fig.align = "center", fig.width = 5, fig.asp = 0.75, out.width = "0.48\\textwidth"}
 
 # option removed for HTML : , out.width = "0.48\\textwidth"
 
