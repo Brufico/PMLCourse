@@ -1,0 +1,12 @@
+---
+title: "Practical Machine Learning - Week 3 - Bagging"
+author: "Jeff Leek, notes + revised graphs by Bruno Fischer Colonimos"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+geometry: margin = 0.7in
+urlcolor: "blue"
+output:
+    pdf_document:
+        number_sections: yes
+        toc: yes
+        toc_depth: 3
+---

@@ -1,19 +1,22 @@
 ---
 title: "Practical Machine Learning - Week 3 - Bagging"
-author: "Jeff Leek, notes by Bruno Fischer Colonimos"
+author: "Jeff Leek, notes + revised graphs by Bruno Fischer Colonimos"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
+geometry: margin = 0.7in
 urlcolor: "blue"
 output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
   pdf_document:
     number_sections: yes
     toc: yes
-  html_document:
-    number_sections: yes
-    theme: readable
-    toc: yes
+    toc_depth: 3
 ---
 
 ------
+
 # Required packages (install before running)
 
 "caret", "party", "ElemStatLearn"
@@ -24,6 +27,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r libs, include=FALSE}
+library(knitr)
 library(caret)
 library(party)
 ```
@@ -46,14 +50,15 @@ More:
 [http://en.wikipedia.org/wiki/Bootstrap_aggregating](http://en.wikipedia.org/wiki/Bootstrap_aggregating)
 
 
-# Example Ozone 
+# Bagging Example: Ozone 
 
 ## data
 
 ```{r ozoneData, cache=TRUE}
 library(ElemStatLearn); data(ozone,package="ElemStatLearn")
 ozone <- ozone[order(ozone$ozone),]
-head(ozone)
+
+kable(head(ozone))
 ```
 
 I'm going to try to predict temperature as a function of ozone.
@@ -72,6 +77,7 @@ The basic idea is, I'm going to create a matrix here and it's going to have 10 r
 ```{r baggedOzone, dependson="ozoneData",cache=TRUE}
 set.seed(1357)
 
+# VO0 == prediction for ozone in 1:155 (original jleek)
 ll <- matrix(NA,nrow=10,ncol=155) # the matrix
 # loop
 for(i in 1:10){ 
@@ -84,18 +90,47 @@ for(i in 1:10){
 ```
 
 
-## Bagged loess
+## Compute bagged loess
 
-```{r, dependson="baggedOzone",fig.height=4.5,fig.width=4.5}
-plot(ozone$ozone,ozone$temperature,pch=19,cex=0.5)
-for(i in 1:10){
-        lines(1:155,ll[i,],col="grey",lwd=2)
+```{r, dependson="baggedOzone", warning=FALSE, fig.align = "center", fig.width = 5, fig.asp = 0.75}
+
+# chunk option out.width = "0.48\\textwidth" in HTML does not print
+
+# VOriginale (jleek)
+# plot(ozone$ozone,ozone$temperature,pch=19,cex=0.5)
+# for(i in 1:10){
+#         lines(1:155,ll[i,],col="grey",lwd=2)
+# }
+# lines(1:155,apply(ll,2,mean),col="red",lwd=2)
+
+
+# V00 BFC (prediction pour Ozone = 1:155)
+# graph basis layer
+g <- ggplot(data = ozone, aes(ozone, temperature)) + 
+        geom_point(alpha = 0.5)
+
+# loop for individual resamples
+for (i in 1:10) {
+        g <- g + geom_line(data = data.frame(ozone = 1:155, 
+                                             rpred=ll[i,]),
+                           aes(ozone, rpred), color = "grey")
 }
-lines(1:155,apply(ll,2,mean),col="red",lwd=2)
+# last layer (bagged prediction)
+g <- g + geom_line(data = data.frame(ozone = 1:155, 
+                                     final = apply(ll,2,mean)), 
+                   aes(ozone, final), color="red", size = 1.5)
+# final touch
+g <- g + labs(title = "bagged loess (red)", 
+         subtitle ="resampled loess (grey)") + 
+        theme(plot.title = element_text(hjust = 0.5),
+              plot.subtitle = element_text(hjust = 0.5))
+ 
+grid.newpage()
+print(g)
 ```
 
 
-# Bagging in caret
+# Bagging in `caret`
 
 * Some models perform bagging for you, in `train` function consider `method` options 
     * `bagEarth` 
@@ -105,7 +140,7 @@ lines(1:155,apply(ll,2,mean),col="red",lwd=2)
 
 
 
-## More bagging in caret, Example of custom bagging
+## More bagging in `caret`,  Custom Bagging Example
 
 You basically are going to take your predictor variable and put it into one data frame. (So I'm going to make the predictors be a data frame that contains the ozone data). 
 Then you have your outcome variable (Here's it's going to be just the temperature variable from the data set). 
@@ -115,14 +150,14 @@ And I pass this to the bag function in caret package. So I tell it:
 * this is my outcome, 
 * this is the number of replications with the number of sub samples I'd like to take from the data set. 
 * And then bagControl tells me something about how I'm going to fit the model. 
-    * So fit is the function that's going to be applied to fit the model every time. This could be a call to the _train_ function in the caret package. 
+    * So fit is the function that's going to be applied to fit the model every time. This could be a call to the `train` function in the caret package. 
     * Predict is a the way that given a particular model fit, that we'll be able to predict new values. So this could be, for example, a call to the predict function from a trained model. 
     * And then aggregate is the way that we'll put the predictions together. So for example it could average the predictions across all the different replicated samples. 
 
 
 
 
-```{r bag1, cache=TRUE}
+```{r bag1, cache=TRUE, message=FALSE, warning=FALSE}
 set.seed(1357)
 
 predictors = data.frame(ozone=ozone$ozone)
@@ -136,10 +171,41 @@ treebag <- bag(predictors, temperature, B = 10,
 
 We plot the resulting predictions:
 
-```{r,dependson="bag1",fig.height=4,fig.width=4}
-plot(ozone$ozone,temperature,col='lightgrey',pch=19)
-points(ozone$ozone,predict(treebag$fits[[1]]$fit,predictors),pch=19,col="red")
-points(ozone$ozone,predict(treebag,predictors),pch=19,col="blue")
+```{r,dependson="bag1", fig.align = "center", fig.width = 5, fig.asp = 0.75}
+
+# option removed for HTML : , out.width = "0.48\\textwidth"
+
+# # VOriginale (jleek)
+# plot(ozone$ozone,temperature,col='lightgrey',pch=19)
+# # erreur probable
+# points(ozone$ozone,predict(treebag$fits[[1]]$fit,predictors),pch=19,col="red") 
+# points(ozone$ozone,predict(treebag,predictors),pch=19,col="blue")
+
+# # BFC with ggplot2
+# # graph basis layer
+g <- ggplot() +
+        geom_point(data = ozone, aes(ozone, temperature), alpha = 0.5)
+
+# individual resamples
+for (i in 1:10){
+df2 <- data.frame(ozone = ozone$ozone,
+                  y = predict(treebag$fits[[i]]$fit, # !!le nom "y" est imposé !!
+                                  predictors))
+g <- g + geom_line(data = df2,
+                   aes(ozone, y), color = "red", alpha = 0.5)
+
+}
+# # last layer (bagged prediction)
+g <- g + geom_line(data = data.frame(ozone = ozone$ozone,
+                                     final = predict(treebag,predictors)),
+                   aes(ozone, final), color="blue", size = 1.5)
+# # final touch
+g <- g + labs(title = "bagged prediction (blue)",
+              subtitle ="resampled predictions (red)") +
+        theme(plot.title = element_text(hjust = 0.5),
+              plot.subtitle = element_text(hjust = 0.5))
+
+g
 ```
 
 If you look at this custom bag version of the conditional regression trees, you can see that it gets some of the benefit that I was showing you in the previous slide with bag loess. So the idea here is I'm plotting ozone again on the x-axis versus temperature on the y-axis. The little grey dots represent actual observed values. The red dots represent the fit from a single conditional regression tree. And so you can see that for example, it doesn't capture the trend that's going on down here very well, the red line is just flat, even though there appears to be a trend upward in the data points here. But when I average over ten different bagged model model fits with these conditional regression trees. I see that there's an increase here in the values in the blue fit, which is the fit from the bagged regression. 
@@ -154,7 +220,7 @@ We're going to look a little bit at those different parts of the bagging functio
 
 ### `fit`
 
-So, for the fit part it takes the data frame and the outcome that we've passed  that, and it basically uses the ctree function to train a tree, (conditional regression tree) on the data set. This is the last command (the `ctree` command). So it returns this model fit from the ctree function. 
+The fit part takes the data frame and the outcome that we've passed  at, and it basically uses the `ctree` function to train a tree, (conditional regression tree) on the data set. This is the last command (the `ctree` command). So it returns this model fit from the `ctree` function. 
 
 ```{r}
 ctreeBag$fit
@@ -164,7 +230,7 @@ ctreeBag$fit
 ### `predict`
 
 
-The prediction takes in the object from the ctree model fit, and a new data set x, and it's going to get a new prediction. 
+The prediction takes in the object from the `ctree` model fit, and a new data set x, and it's going to get a new prediction. 
 So what you can see here is it basically calculates each time the _tree response_ or the outcome from the object and the new data. It then calculates this probability matrix and returns either the actually the observed levels that it predicts or it actually re, just returns the response, the predicted response from the variable. 
 
 
@@ -174,7 +240,7 @@ ctreeBag$pred
 
 ### `aggregate`
 
-The aggregation then takes those values and averages them together or puts them together in some way. 
+The aggregation then takes those values and averages them together, or puts them together in some way. 
 
 So here what this is doing: is it's basically getting the prediction from every single one of these model fits, so that' s across a large number of observations. And then it binds them together into one data matrix by with each row being equal to the prediction from one of the model predictions. And then it takes the median at every value. So in other words it takes the median prediction from each of the different model fits across all the bootstrap samples
 
@@ -184,7 +250,7 @@ So here what this is doing: is it's basically getting the prediction from every 
 ctreeBag$aggregate
 ```
 
-## Notes and further resources
+# Notes and further resources
 
 __Notes__:
 
