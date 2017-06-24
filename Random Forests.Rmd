@@ -1,0 +1,159 @@
+---
+title: "Practical Machine Learning - Week 3 - Random Forests"
+subtitle: 
+author:  "Jeff Leek, notes by Bruno Fischer Colonimos"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+fontsize: 12pt
+urlcolor: blue
+documentclass: article
+classoption: a4paper
+geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
+output:
+  html_document: 
+    number_sections: yes
+    theme: readable
+    toc: yes
+
+  pdf_document: 
+    highlight: monochrome
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+---
+
+----------------
+
+
+```{r setup, cache = FALSE, echo = FALSE, message = FALSE, warning = FALSE, tidy = FALSE}
+
+library(knitr)
+options(width = 100)
+opts_chunk$set(message = F, error = F, warning = F, fig.align = 'center')
+
+```
+
+```{r libs,include=FALSE}
+library(caret)
+library(ggplot2)
+library("xtable")
+library(grid)
+library(gridExtra)
+library(randomForest)
+```
+
+# Install first
+
+randomForest
+
+
+# Random forests principles
+
+1. Bootstrap samples
+2. At each split, bootstrap variables
+3. Grow multiple trees and __vote__
+
+__Pros__:
+
+1. Accuracy
+
+__Cons__:
+
+1. Speed
+2. Interpretability
+3. Overfitting
+
+# Auxiliairy material
+
+```{r aux}
+# palette color-blind-friendly: The palette with black
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73",
+                "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+```
+
+
+# Iris Example
+
+##  data
+
+```{r iris, cache=TRUE}
+data(iris) 
+inTrain <- createDataPartition(y=iris$Species,
+                              p=0.7, list=FALSE)
+training <- iris[inTrain,]
+testing <- iris[-inTrain,]
+```
+
+## Train a Random forests model
+
+```{r forestIris, dependson="irisData",fig.height=4,fig.width=4,cache=TRUE}
+library(caret)
+modFit <- train(Species~ ., data=training,method="rf", prox=TRUE) # prox?
+modFit
+```
+
+## Getting a single tree from the model
+
+```{r , dependson="forestIris",fig.height=4,fig.width=4}
+getTree(modFit$finalModel,k=2) # Tree no 2
+
+```
+
+---
+
+## Getting Class "centers"
+
+```{r centers, dependson="forestIris",fig.asp=0.75,fig.width=3.5}
+# get centers
+irisP <- classCenter(training[,c(3,4)], training$Species, modFit$finalModel$prox) # returns the centers
+irisP <- as.data.frame(irisP)
+irisP$Species <- rownames(irisP)
+
+p <- ggplot(data = training) + geom_point(aes(x=Petal.Width,y=Petal.Length,col=Species))
+p <- p + geom_point(aes(x=Petal.Width,y=Petal.Length,col=Species),size=5,shape=4,data=irisP)
+p + scale_color_manual(values = cbbPalette)
+```
+
+---
+
+## Predicting new values
+
+### testing sample
+
+```{r predForest, dependson="centers",fig.asp=0.75,fig.width=3.5, cache=TRUE}
+pred <- predict(modFit,testing)
+testing$predRight <- pred == testing$Species
+# table(pred,testing$Species)
+kable(table(pred,testing$Species), caption = "predicted (rows) vs species (columns)")
+```
+
+---
+
+### Predicting new values : plot
+
+```{r, dependson="predForest",fig.asp=0.75,fig.width=3.5}
+# qplot(Petal.Width,Petal.Length,colour=predRight,data=testing,main="newdata Predictions")
+
+ggplot(data = testing, aes(Petal.Width,Petal.Length, colour = Species, shape = predRight)) + 
+        geom_point() +
+        scale_color_manual(values = cbbPalette) +
+        labs(title="newdata Predictions")
+```
+
+
+# Notes and further resources
+
+__Notes__:
+
+* Random forests are usually one of the two top performing algorithms along with boosting in prediction contests.
+* Random forests are difficult to interpret but often very accurate. 
+* Care should be taken to avoid overfitting (see [rfcv](http://cran.r-project.org/web/packages/randomForest/randomForest.pdf) funtion)
+
+
+__Further resources__:
+
+* [Random forests](http://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm)
+* [Random forest Wikipedia](http://en.wikipedia.org/wiki/Random_forest)
+* [Elements of Statistical Learning](http://www-stat.stanford.edu/~tibs/ElemStatLearn/)
+
+

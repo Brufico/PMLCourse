@@ -3,12 +3,18 @@ title: "Practical Machine Learning - Week 3 - Predicting with trees"
 subtitle: 
 author:  "Jeff Leek, notes by Bruno Fischer Colonimos"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
+fontsize: 12pt
 urlcolor: blue
-geometry: top=0.5in, left=0.6in, right=0.6in, bottom = 0.7in, footskip = 0.3in
+documentclass: article
+classoption: a4paper
+geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
 output:
   pdf_document: 
+    highlight: monochrome
     number_sections: yes
     toc: yes
+    toc_depth: 4
+    
   html_document: 
     number_sections: yes
     theme: readable
@@ -18,8 +24,6 @@ output:
 ----------------
 
 ```{r setup, cache = FALSE, echo = FALSE, message = FALSE, warning = FALSE, tidy = FALSE}
-# make this an external chunk that can be included in any file
-
 
 getlib <- function(libname) {
         if (!require(libname, character.only = TRUE)) {
@@ -37,7 +41,8 @@ options(width = 100)
 
 opts_chunk$set(message = F, error = F, warning = F, comment = NA, fig.align = 'center',  cache.path = '.cache/', fig.path = 'fig/')
 
-options(xtable.type = 'html')
+# options(xtable.type = 'html')
+# 
 # knit_hooks$set(inline = function(x) {
 #   if(is.numeric(x)) {
 #     round(x, getOption('digits'))
@@ -110,8 +115,8 @@ Measures of impurity
 
 __Probability that an object of the mth leaf is part of the kth class__
 
-Here are different measures of impurity. They're all based on this probability that you can estimate: p hat for the mth leaf and the kth class:\
-In the **m** leaf  you have $N_m$ total objects that you might consider, and you can count the number of times that a particular class **k** appears in that leaf. So p hat is the number of times that class k appears in leaf m divided by $N_m$ :
+Here are different measures of impurity. They're all based on this probability $\hat{p}_{mk}$that you can estimate: p hat of the kth class in the mth leaf :\
+In the **m** leaf  you have $N_m$ total objects, and you can count the number of times that a particular class **k** appears in that leaf. So p hat is the number of times that class k appears in leaf m divided by $N_m$ :
 
 $$\hat{p}_{mk} = \frac{1}{N_m}\sum_{x_i\; in \; Leaf \; m}\mathbb{1}(y_i = k)$$
 
@@ -126,12 +131,11 @@ Values:
 
 __Gini index__:
 
-The Gini index (which is not to be confused with the Gini coefficient in economics). (*is it for 2 classes only?? No, I guess not*)\
-It's basically 1 minus the sum of the squared probabilities that you belong to any of the different classes. 
+The Gini index (not to be confused with the Gini coefficient in economics) is basically 1 minus the sum of the squared probabilities that you belong to any of the different classes. 
 
 $$ \sum_{k \neq k'} \hat{p}_{mk} \times \hat{p}_{mk'} = \sum_{k=1}^K \hat{p}_{mk}(1-\hat{p}_{mk}) = 1 - \sum_{k=1}^K p_{mk}^2$$
 
-Values: So again zero means perfect purity. In other words the class has one particular class which has probability equal to 1 and all the other classes have probability equal to 0. 0.5 means no purity. In other words, all of the classes are perfectly balanced within each leaf. 
+Values: So again zero means perfect purity. In other words one particular class has probability equal to 1 and all the other classes have probability equal to 0. 0.5 means no purity. In other words, all of the classes are perfectly balanced within each leaf. 
 
 * 0 = perfect purity
 * 0.5 = no purity
@@ -160,11 +164,11 @@ $$-\sum_{k=1}^K \hat{p}_{mk} \log_2\hat{p}_{mk} $$
 
 $$H = -\sum_{k=1}^K \hat{p}_{mk} \log_2\hat{p}_{mk}$$
 
-* **Information gain of a tree split**
+* **Information gain of a tree split (node)**
 
 $$Information \; Gain = Entropy(parent) - \mathrm{Weighted \; Sum \; of \;} (Entropy(Children))$$
 
-See example in Wikipedia
+See example in [wikipedia](http://en.wikipedia.org/wiki/Decision_tree_learning)
 
 
 
@@ -175,8 +179,20 @@ Measures of impurity, Example
 
 
 ```{r leftplot1, fig.width=5, fig.asp= 0.76, echo=FALSE, cache = FALSE}
+# function to get the legend from any one plot (the plot must have a legend)
+# https://github.com/hadley/ggplot2/wiki/Share-a-legend-between-two-ggplot2-graphs
+g_legend <- function(a.gplot){
+        tmp <- ggplot_gtable(ggplot_build(a.gplot))
+        leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+        legend <- tmp$grobs[[leg]]
+        return(legend)}
+
+# palette color-blind-friendly: The palette with black
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73",
+                "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 
+# generate left plot with legend
 ga <- ggplot(data = data.frame(x = rep(1:4,each = 4), y = rep(1:4,4), 
                                classe = factor(c(rep(1,15), rep(2,1)))),
              aes(x, y, colour = classe, shape = factor(classe))) + 
@@ -184,15 +200,33 @@ ga <- ggplot(data = data.frame(x = rep(1:4,each = 4), y = rep(1:4,4),
         scale_x_continuous(name = "", breaks = NULL) +
         scale_y_continuous(name = "", breaks = NULL) +
         scale_shape_discrete(name = "Classe") +
-        scale_color_discrete(name = "Classe") +
+        scale_color_manual(name = "Classe", values=cbbPalette) +
         labs(title = "A") + 
-        theme(plot.background = element_rect(colour="black", size = 1),
+        theme(plot.background = element_rect(colour="black", size = 0.5),
               plot.title = element_text(hjust = 0.5))
+
+mylegend <- g_legend(ga)
 
 ```
 
 ```{r rightplot2,  fig.width=5, fig.asp= 0.76, echo=FALSE, cache = FALSE}
+# Regenerate  both plots without legend
 
+# left
+ga <- ggplot(data = data.frame(x = rep(1:4,each = 4), y = rep(1:4,4), 
+                               classe = factor(c(rep(1,15), rep(2,1)))),
+             aes(x, y, colour = classe, shape = factor(classe))) + 
+        geom_point(size = 4) + 
+        scale_x_continuous(name = "", breaks = NULL) +
+        scale_y_continuous(name = "", breaks = NULL) +
+        scale_shape_discrete(name = "Classe") +
+        scale_color_manual(name = "Classe", values=cbbPalette) +
+        labs(title = "A") + 
+        theme(plot.background = element_rect(colour="black", size = 0.5),
+              plot.title = element_text(hjust = 0.5),
+              legend.position = "none")
+
+# right
 gb <- ggplot(data = data.frame(x = rep(0.5:3.5,each = 4), y = rep(1:4,4), 
                                classe = factor(c(rep(1,8), rep(2,8)))),
              aes(x, y, colour = classe, shape = classe)) + 
@@ -200,15 +234,53 @@ gb <- ggplot(data = data.frame(x = rep(0.5:3.5,each = 4), y = rep(1:4,4),
         scale_x_continuous(name = "", breaks = NULL) +
         scale_y_continuous(name = "", breaks = NULL) +
         scale_shape_discrete(name = "Classe") +
-        scale_color_discrete(name = "Classe") +
+        scale_color_manual(name = "Classe", values=cbbPalette) +
         labs(title = "B") + 
         theme(plot.background = element_rect(colour="black", size = 1),
-              plot.title = element_text(hjust = 0.5))
+              plot.title = element_text(hjust = 0.5),
+              legend.position = "none")
+# title
+mytitle <- textGrob("Two situations", gp = gpar(fontface="bold"), just = c(0.5, 0.5))
+
+
+# combine 1
+gabt <- arrangeGrob(grobs = list(ga, mylegend, gb ),
+                   layout_matrix = matrix(data = c(1,1,1,1, 2, 3,3,3,3),
+                                          byrow = TRUE,
+                                          nrow = 1),
+                   top = mytitle, 
+                   padding = unit(2, "line") )
+
+
+# # combine v2 (other ways)
+# # step 1
+# gab <- arrangeGrob(grobs = list(ga, mylegend, gb ),
+#                    layout_matrix = matrix(data = c(1,1,1,1, 2, 3,3,3,3),
+#                                           byrow = TRUE,
+#                                           nrow = 1))
+# # step 2 : with title (top = was too thin)
+# gabt <- arrangeGrob(grobs = list(mytitle, gab ),
+#                    layout_matrix = matrix(data = c(1,2),
+#                                           byrow = FALSE,
+#                                           ncol = 1),
+#                    heights = c(1,4))
+# # equivalent step 2
+# gabt <- arrangeGrob(grobs = list(mytitle, gab ),
+#                    ncol = 1,
+#                    heights = c(1,4) )
+# # equivalent step 2                         
+# gabt <- arrangeGrob(grobs = list(mytitle, gab ),
+#                    layout_matrix = matrix(data = c(1,2,2,2,2),
+#                                           byrow = FALSE,
+#                                           ncol = 1))
+
 ```
 
-```{r show2plots, fig.width=10, echo=FALSE, cache = FALSE, fig.width=10, fig.asp= 0.38 , fig.align = 'center', out.width="\\textwidth"}
+```{r show2plots, fig.width=7, echo=FALSE, cache = FALSE, fig.width=9, fig.asp= 0.38 , fig.align = 'center', out.width="\\textwidth"}
+# , fig.asp= 0.38 , fig.align = 'center', out.width="\\textwidth"
+
 grid.newpage()
-grid.arrange(ga, gb, ncol = 2)
+grid.draw(gabt)
 ```
 
 
@@ -255,20 +327,31 @@ dim(training); dim(testing)
 
 ```{r, dependson="trainingTest",fig.width=5, fig.asp= 0.75 , out.width="0.48\\textwidth"}
 # removed: fig.height=4,
-gwidth <- ggplot(data = training, aes(Petal.Width, Sepal.Width, colour=Species)) + geom_point()+ 
+gwidth <- ggplot(data = training, aes(Petal.Width, Sepal.Width, colour=Species)) + geom_point() + 
+        scale_color_manual(values=cbbPalette) +
         theme(plot.background = element_rect(colour="black", size = 1),
               plot.title = element_text(hjust = 0.5))
-glen <- ggplot(data = training, aes(Petal.Length, Sepal.Length, colour=Species)) + geom_point()+ 
+glen <- ggplot(data = training, aes(Petal.Length, Sepal.Length, colour=Species)) + geom_point() + 
+        scale_color_manual(values=cbbPalette) +
         theme(plot.background = element_rect(colour="black", size = 1),
               plot.title = element_text(hjust = 0.5))
 ```
 
 
-```{r, dependson="trainingTest", fig.width=10, fig.asp= 0.38 , fig.align = 'left', out.width="\\textwidth", echo = FALSE}
+```{r, dependson="trainingTest", fig.width=9, fig.asp= 0.38 , fig.align = 'left', out.width="\\textwidth", echo = FALSE}
+# grid.newpage()
+# grid.arrange(gwidth, glen, ncol = 2) 
+```
+
+```{r, dependson="trainingTest", fig.width=4, fig.asp= 0.75 , fig.keep ="all", fig.show="hold", fig.align="left", out.width="0.48\\textwidth"}
+# , out.width="0.48\\textwidth"
 grid.newpage()
-grid.arrange(gwidth, glen, ncol = 2) 
-
+# grid.arrange(gwidth, glen, ncol = 2) 
+grid.draw(glen)
+grid.draw(gwidth)
 ```
+
+
 
 ---
 
@@ -301,16 +384,19 @@ text(modFit$finalModel, use.n=TRUE, all=TRUE, cex=.7)
 
 ## Prettier plots
 
-```{r, dependson="createTree", fig.height=5.5, fig.width=4}
+```{r, dependson="createTree", fig.asp=1.4 , fig.width=4, fig.keep ="all", fig.show="hold", fig.align="left", out.width="0.48\\textwidth"}
 library(rattle)
-fancyRpartPlot(modFit$finalModel, main = "Classification Tree")
+fancyRpartPlot(modFit$finalModel, 
+               main = "Classification Tree 1",
+               palettes=c("Greys", "Oranges", "Reds") )
+# tree nb 2 (BFC)
+# grid.newpage() 
+Sys.sleep(1)
+fancyRpartPlot(modFit2$finalModel, main = "Classification Tree 2",
+               palettes=c("Greys", "Oranges", "Reds") )
+
 ```
 
-```{r, dependson="createTree", fig.height=5.5, fig.width=4}
-# or (BFC try)
-fancyRpartPlot(modFit2$finalModel, main = "Classification Tree 2")
-
-```
 
 ---
 
@@ -327,6 +413,9 @@ cm1 <- confusionMatrix(predtest,testing$Species)
 
 cm1
 ```
+
+---------
+
 ```{r}
 # model2
 confusionMatrix(predict(modFit2,newdata=testing),
