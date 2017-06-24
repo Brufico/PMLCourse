@@ -9,16 +9,16 @@ documentclass: article
 classoption: a4paper
 geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
 output:
-  html_document: 
-    number_sections: yes
-    theme: readable
-    toc: yes
-
   pdf_document: 
     highlight: monochrome
     number_sections: yes
     toc: yes
     toc_depth: 4
+    
+  html_document: 
+    number_sections: yes
+    theme: readable
+    toc: yes
 ---
 
 ----------------
@@ -43,7 +43,7 @@ library(randomForest)
 
 # Install first
 
-randomForest
+randomForest, e1071
 
 
 # Random forests principles
@@ -87,31 +87,47 @@ testing <- iris[-inTrain,]
 ## Train a Random forests model
 
 ```{r forestIris, dependson="irisData",fig.height=4,fig.width=4,cache=TRUE}
-library(caret)
+set.seed(975)
 modFit <- train(Species~ ., data=training,method="rf", prox=TRUE) # prox?
 modFit
 ```
 
 ## Getting a single tree from the model
 
-```{r , dependson="forestIris",fig.height=4,fig.width=4}
-getTree(modFit$finalModel,k=2) # Tree no 2
+```{r , dependson="forestIris",fig.asp=1.4,fig.width=4}
+treetwo <- getTree(modFit$finalModel,k=2) # Tree no 2
+# treetwo
+kable(treetwo, row.names = TRUE, caption = "Tree 2")
 
+# next tree
+treethree <- getTree(modFit$finalModel,k=3) # Tree no 3
+kable(treethree, row.names = TRUE, caption = "Tree 3")
+
+
+# library(rattle)
+# library(rpart)
+# fancyRpartPlot(treetwo, 
+#                main = "Tree 2",
+#                palettes=c("Greys", "Oranges", "Reds") ) #==> Does not work
+# These trees are differents
 ```
 
 ---
 
 ## Getting Class "centers"
 
-```{r centers, dependson="forestIris",fig.asp=0.75,fig.width=3.5}
+```{r centers, dependson="forestIris",fig.asp=0.75,fig.width=4}
 # get centers
 irisP <- classCenter(training[,c(3,4)], training$Species, modFit$finalModel$prox) # returns the centers
 irisP <- as.data.frame(irisP)
 irisP$Species <- rownames(irisP)
 
-p <- ggplot(data = training) + geom_point(aes(x=Petal.Width,y=Petal.Length,col=Species))
-p <- p + geom_point(aes(x=Petal.Width,y=Petal.Length,col=Species),size=5,shape=4,data=irisP)
+p <- ggplot(data = training) +
+        geom_point(aes(x=Petal.Width,y=Petal.Length,col=Species)) + 
+        geom_point(aes(x=Petal.Width,y=Petal.Length,col=Species),
+                   size=5,shape=4,data=irisP)
 p + scale_color_manual(values = cbbPalette)
+
 ```
 
 ---
@@ -129,13 +145,14 @@ kable(table(pred,testing$Species), caption = "predicted (rows) vs species (colum
 
 ---
 
-### Predicting new values : plot
+### Predicting new values : plot and check if true
 
-```{r, dependson="predForest",fig.asp=0.75,fig.width=3.5}
+```{r, dependson="predForest",fig.asp=0.75,fig.width=4}
 # qplot(Petal.Width,Petal.Length,colour=predRight,data=testing,main="newdata Predictions")
 
-ggplot(data = testing, aes(Petal.Width,Petal.Length, colour = Species, shape = predRight)) + 
-        geom_point() +
+ggplot(data = testing, 
+       aes(Petal.Width,Petal.Length, colour = Species, shape = predRight)) + 
+        geom_point(size = 2, alpha = 0.8) +
         scale_color_manual(values = cbbPalette) +
         labs(title="newdata Predictions")
 ```
