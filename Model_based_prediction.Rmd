@@ -1,0 +1,111 @@
+---
+title: "Practical Machine Learning - Week 3 - Model-based predictions"
+subtitle: 
+author:  "Jeff Leek, notes by Bruno Fischer Colonimos"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+fontsize: 12pt
+urlcolor: blue
+documentclass: article
+classoption: a4paper
+geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
+output:
+  html_document: 
+    number_sections: yes
+    theme: readable
+    toc: yes
+    toc_depth: 4
+    
+  pdf_document: 
+    highlight: monochrome
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+---
+
+----------------
+
+
+```{r setup, cache = FALSE, echo = FALSE, message = FALSE, warning = FALSE, tidy = FALSE}
+
+library(knitr)
+options(width = 100)
+opts_chunk$set(message = F, error = F, warning = F, fig.align = 'center')
+
+```
+
+```{r libs,include=FALSE}
+library(caret)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+
+```
+
+# Install first
+
+
+
+## Basic idea
+
+1. Assume the data follow a probabilistic model
+2. Use Bayes' theorem to identify optimal classifiers
+
+__Pros:__
+
+* Can take advantage of structure of the data
+* May be computationally convenient
+* Are reasonably accurate on real problems
+
+__Cons:__
+
+* Make additional assumptions about the data
+* When the model is incorrect you may get reduced accuracy
+
+---
+
+
+
+# Model based approach
+
+
+1. Our goal is to build parametric model for conditional distribution $P(Y = k | X = x)$
+
+2. A typical approach is to apply [Bayes theorem](http://en.wikipedia.org/wiki/Bayes'_theorem):
+$$ Pr(Y = k | X=x) = \frac{Pr(X=x|Y=k)Pr(Y=k)}{\sum_{\ell=1}^K Pr(X=x |Y = \ell) Pr(Y=\ell)}$$
+$$Pr(Y = k | X=x) = \frac{f_k(x) \pi_k}{\sum_{\ell = 1}^K f_{\ell}(x) \pi_{\ell}}$$
+
+3. Typically prior probabilities $\pi_k$ are set in advance.
+
+4. A common choice for $f_k(x) = \frac{1}{\sigma_k \sqrt{2 \pi}}e^{-\frac{(x-\mu_k)^2}{\sigma_k^2}}$, a Gaussian distribution
+
+5. Estimate the parameters ($\mu_k$,$\sigma_k^2$) from the data.
+
+6. Classify to the class with the highest value of $P(Y = k | X = x)$
+
+
+
+# Classifying using the model
+
+A range of models use this approach
+
+* Linear discriminant analysis assumes $f_k(x)$ is multivariate Gaussian with same covariances
+* Quadratic discrimant analysis assumes $f_k(x)$ is multivariate Gaussian with different covariances
+* [Model based prediction](http://www.stat.washington.edu/mclust/) assumes more complicated versions for the covariance matrix 
+* Naive Bayes assumes independence between features for model building
+
+http://statweb.stanford.edu/~tibs/ElemStatLearn/
+
+
+---
+
+## Why linear discriminant analysis?
+
+$$log \frac{Pr(Y = k | X=x)}{Pr(Y = j | X=x)}$$
+$$ = log \frac{f_k(x)}{f_j(x)} + log \frac{\pi_k}{\pi_j}$$
+$$ = log \frac{\pi_k}{\pi_j} - \frac{1}{2}(\mu_k + \mu_j)^T \Sigma^{-1}(\mu_k + \mu_j)$$
+$$ + x^T \Sigma^{-1} (\mu_k - \mu_j)$$
+
+http://statweb.stanford.edu/~tibs/ElemStatLearn/
+
+
+
