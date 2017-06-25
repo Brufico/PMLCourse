@@ -16,6 +16,9 @@ output:
     * caret9B.R
 * Week 3
     * Predicting with trees.Rmd
+    * Bagging
+    * Random Forests
+    * Boosting
     
   
 
