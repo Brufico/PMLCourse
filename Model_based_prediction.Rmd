@@ -47,6 +47,37 @@ cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73",
                 "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 
+# modified BFC
+
+cbfPalette <- cbbPalette
+cbfPalette[3] <- cbbPalette[7]
+cbfPalette[6] <- cbbPalette[3]
+cbfPalette[8] <- cbbPalette[7]
+
+# * `set_default_scale` has been removed. If you want to change the default
+# scale for an aesthetic, just create a function called
+# `scale_aesthetic_continuous` or `scale_aesthetic_discrete` that returns the
+# scale that you want.  For example:
+
+p <- qplot(mpg, wt, data = mtcars, colour = factor(cyl))
+
+# scale_colour_discrete <- scale_colour_brewer
+scale_colour_discrete <- function(...) {
+        scale_colour_manual(values = cbbPalette)
+}
+
+# scale_colour_discrete <- scale_colour_brewer
+scale_fill_discrete <- function(...) {
+        scale_fill_manual(values = cbbPalette)
+}
+
+
+
+scale_colour_continuous <- function(...) {
+        ggplot2::scale_colour_gradient(
+                low = "#009900", high = "#FF0000")
+}
+
 
 ```
 
