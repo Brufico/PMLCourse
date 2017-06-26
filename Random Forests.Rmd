@@ -62,7 +62,7 @@ __Cons__:
 2. Interpretability
 3. Overfitting
 
-# Auxiliairy material
+# Auxiliary material
 
 ```{r aux}
 # palette color-blind-friendly: The palette with black
