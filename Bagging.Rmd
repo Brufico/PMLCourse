@@ -2,22 +2,30 @@
 title: "Practical Machine Learning - Week 3 - Bagging"
 author: "Jeff Leek, notes + revised graphs by Bruno Fischer Colonimos"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
-geometry: margin = 0.7in
-urlcolor: "blue"
+fontsize: 12pt
+# urlcolor: blue
+documentclass: article
+classoption: a4paper
+geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
 output:
-  pdf_document:
+  pdf_document: 
+    highlight: monochrome
     number_sections: yes
     toc: yes
-    toc_depth: 3
-  html_document:
+    toc_depth: 4
+
+  html_document: 
     number_sections: yes
+    theme: readable
     toc: yes
-    toc_depth: 3
+    toc_depth: 4
 ---
 
-------
+----------------
 
-# Required packages (install before running)
+# Preliminary steps
+
+## Required packages (install before running)
 
 "caret", "party", "ElemStatLearn"
 
@@ -25,11 +33,49 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Libraries and auxiliary code (install before running)
 
-```{r libs, include=FALSE}
+
+```{r libs, echo =TRUE, warning=FALSE, message=FALSE, results='hide'}
 library(knitr)
 library(caret)
-library(party)
+library(party) #trees
+
+
+specialpalette <- TRUE # controls the colour of the plots
+
+if (specialpalette) {
+        # palette color-blind-friendly: The palette with black (Cookbook for R,
+        # http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/)
+        cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73",
+                        "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+        
+        # modified BFC
+        cbfPalette <- cbbPalette
+        cbfPalette[3] <- cbbPalette[7]
+        cbfPalette[6] <- cbbPalette[3]
+        cbfPalette[8] <- cbbPalette[7]
+        
+        # * `set_default_scale` has been removed. If you want to change the default
+        # scale for an aesthetic, just create a function called
+        # `scale_aesthetic_continuous` or `scale_aesthetic_discrete` that returns the
+        # scale that you want. 
+        
+        scale_colour_discrete <- function(...) {
+                scale_colour_manual(values = cbbPalette)
+        }
+        
+        scale_fill_discrete <- function(...) {
+                scale_fill_manual(values = cbbPalette)
+        }
+        
+        scale_colour_continuous <- function(...) {
+                ggplot2::scale_colour_gradient(
+                        low = "#009900", high = "#FF0000")
+        }
+        
+}
+
 ```
 
 
@@ -96,14 +142,6 @@ for(i in 1:10){
 
 # chunk option  , out.width = "0.48\\textwidth" in HTML does not print
 
-# VOriginale (jleek)
-# plot(ozone$ozone,ozone$temperature,pch=19,cex=0.5)
-# for(i in 1:10){
-#         lines(1:155,ll[i,],col="grey",lwd=2)
-# }
-# lines(1:155,apply(ll,2,mean),col="red",lwd=2)
-
-
 # V00 BFC (prediction pour Ozone = 1:155)
 # graph basis layer
 g <- ggplot(data = ozone, aes(ozone, temperature)) + 
@@ -113,14 +151,15 @@ g <- ggplot(data = ozone, aes(ozone, temperature)) +
 for (i in 1:10) {
         g <- g + geom_line(data = data.frame(ozone = 1:155, 
                                              rpred=ll[i,]),
-                           aes(ozone, rpred), color = "grey")
+                           aes(ozone, rpred), 
+                           color = "black", size = 0.5, alpha =0.5)
 }
 # last layer (bagged prediction)
 g <- g + geom_line(data = data.frame(ozone = 1:155, 
                                      final = apply(ll,2,mean)), 
-                   aes(ozone, final), color="red", size = 1.5)
+                   aes(ozone, final), color="black", size = 1.5)
 # final touch
-g <- g + labs(title = "bagged loess (red)", 
+g <- g + labs(title = "bagged loess (thick line)", 
          subtitle ="resampled loess (grey)") + 
         theme(plot.title = element_text(hjust = 0.5),
               plot.subtitle = element_text(hjust = 0.5))
@@ -175,13 +214,7 @@ We plot the resulting predictions:
 
 # option removed for HTML : , out.width = "0.48\\textwidth"
 
-# # VOriginale (jleek)
-# plot(ozone$ozone,temperature,col='lightgrey',pch=19)
-# # erreur probable
-# points(ozone$ozone,predict(treebag$fits[[1]]$fit,predictors),pch=19,col="red") 
-# points(ozone$ozone,predict(treebag,predictors),pch=19,col="blue")
-
-# # BFC with ggplot2
+# # BFC with ggplot2 (modified from the original jLeek version)
 # # graph basis layer
 g <- ggplot() +
         geom_point(data = ozone, aes(ozone, temperature), alpha = 0.5)
@@ -192,13 +225,13 @@ df2 <- data.frame(ozone = ozone$ozone,
                   y = predict(treebag$fits[[i]]$fit, # !!le nom "y" est imposé !!
                                   predictors))
 g <- g + geom_line(data = df2,
-                   aes(ozone, y), color = "red", alpha = 0.5)
+                   aes(ozone, y), color = "black", alpha = 0.5, size = 0.5)
 
 }
 # # last layer (bagged prediction)
 g <- g + geom_line(data = data.frame(ozone = ozone$ozone,
                                      final = predict(treebag,predictors)),
-                   aes(ozone, final), color="blue", size = 1.5)
+                   aes(ozone, final), color="black", size = 1.5)
 # # final touch
 g <- g + labs(title = "bagged prediction (blue)",
               subtitle ="resampled predictions (red)") +
@@ -208,7 +241,7 @@ g <- g + labs(title = "bagged prediction (blue)",
 g
 ```
 
-If you look at this custom bag version of the conditional regression trees, you can see that it gets some of the benefit that I was showing you in the previous slide with bag loess. So the idea here is I'm plotting ozone again on the x-axis versus temperature on the y-axis. The little grey dots represent actual observed values. The red dots represent the fit from a single conditional regression tree. And so you can see that for example, it doesn't capture the trend that's going on down here very well, the red line is just flat, even though there appears to be a trend upward in the data points here. But when I average over ten different bagged model model fits with these conditional regression trees. I see that there's an increase here in the values in the blue fit, which is the fit from the bagged regression. 
+If you look at this custom bag version of the conditional regression trees, you can see that it gets some of the benefit that I was showing you in the previous slide with bag loess. So the idea here is I'm plotting ozone again on the x-axis versus temperature on the y-axis. The little grey dots represent actual observed values. Each thin grey lines represent the fit from a single conditional regression tree. And so you can see that for example, it doesn't capture the trend that's going on down here very well, the red line is just flat, even though there appears to be a trend upward in the data points here. But when I average over ten different bagged model model fits with these conditional regression trees. I see that there's an increase here in the values in the black fit, which is the fit from the bagged regression. 
 
 
 http://www.inside-r.org/packages/cran/caret/docs/nbBag

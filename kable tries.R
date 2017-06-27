@@ -10,7 +10,7 @@
 #' geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
 #' output:
 #'   pdf_document:
-#'   highlight: monochrome
+#'     highlight: monochrome
 #'     number_sections: yes
 #'     toc: yes
 #'     toc_depth: 4
@@ -26,8 +26,8 @@
 
 
 
-# Auxiliary code
-# ==============
+#' Auxiliary code
+#' ==============
 
 
 # def getlib ==> Works in scripts, but not in Rmd
@@ -45,11 +45,14 @@ getlib("reshape2")
 getlib("kernlab")
 
 
+
 #'
 #' Example data
 #' ============
 #'
-
+#'Data Frame
+#'-----------
+#'
 
 
 
@@ -79,6 +82,7 @@ cvals <- sapply(X = fv, FUN = function(x) {
         }
         )
 
+# the dataframe
 df <- data.frame(
         fv <- fv,
         cfv <- cfv,
@@ -88,131 +92,102 @@ df <- data.frame(
 
 
 
-
-# named vector
-# ------------
-
-# pour les vecteurs nommés
-kable_nvect <- function(x, transpose = TRUE, namecol = c(""), ...) {
-        if (transpose == TRUE) { kable(t(as.matrix(x)), ...)
-        } else {
-                mm <- as.matrix(x)
-                colnames(mm) <- namecol
-                kable(mm, ...)
-        }
-}
-
-# explore other possibilities with a matrix
-# horizontal display
-xx <- c(u = 1, v = 2, w =  3)
-mm <- matrix(data = xx, nrow=1)
-colnames(mm) <- names(xx)
-rownames(mm) <- c("key")
-kable(mm)
+#'
+#' Example Matrices
+#' ----------------
+#'
 
 
+# matrix without names
+m0 <- matrix(1:12, nrow = 3)
+m0
+
+# matrix with column names
+# mcol
+mcol <- m0
+colnames(mcol) <- rep("", ncol(mcol))
+colnames(mcol) <- paste0("Col ", 1:ncol(mcol))
+mcol
+
+# matrix with row names
+# mrow
+mrow <- m0
+rownames(mrow) <- rep("", nrow(mrow))
+rownames(mrow) <- paste0("Row ", 1:nrow(mrow))
+mrow
 
 
+# matrix with column and rox names
+# mcr
+mcr <- m0
+colnames(mcr) <- rep("", ncol(mcr))
+colnames(mcr) <- paste0("Col ", 1:ncol(mcr))
+rownames(mcr) <- rep("", nrow(mcol))
+rownames(mcr) <- paste0("Row ", 1:nrow(mcol))
+mcr
 
 
-
-
-#tests
-#factor summary
-sfv <- summary(df$fv)
-# kable(sfv) fails
-kable_nvect(sfv)
-kable_nvect(sfv, t = FALSE, n = "Effectif")
-kable_nvect(sfv, t = FALSE)
-kable_nvect(sfv, t = FALSE, n = "Effectif")
-
-#numeric summary
-sumvals <- summary(dfdat$vals)
-# kable(sumvals)
-kable_nvect(sumvals, digits=2, align = "cllcll", caption = "zozo")
-kable_nvect(sumvals, t = FALSE, digits=2,
-            align = "r",
-            name = "Valeur",caption = "Résumés")
+#'
+#' Experiments with kable + matrices
+#' =================================
+#'
 
 
 
+kable(m0) #fails : no header
+kable(mrow) #fails  : no header
+kable(mcol) # works ok
+kable(mcr) # works ok
+
+try(expr = kable(m0), silent = TRUE)
+
+try
+#'
+#' Analysis of Kable results+ modifications of those
+#' -------------------------------------------------
+#'
 
 
+k1 <- kable(mcol) # works ok
+k1
 
-
-
-
-
-
-
-
-
-
-
-data("spam")
-# head(spam)
-colnames(spam)
-
-table(spam$type)
-
-prediction <- ifelse(spam$your > 0.5,"spam","nonspam")
-# ptable <- table(prediction,spam$type)/length(spam$type)
-# table
-rtable <- table(prediction,spam$type)
-
-str(rtable)
-
-kable(rtable)
-
-# proportion tables
-rptable <- prop.table(rtable, margin = 1)
-cptable <- prop.table(rtable, margin = 2)
-
-rtable2 <- rtable
-dim(rtable2)
-dn1 <- dimnames(rtable2)
-dn1
-
-# dn <- attr(rtable2, "dimnames")
-# dn[1]
-# dn[2]
-names(dn1)[2] <- "TrueStatus"
-dimnames(rtable2) <- dn1
-
-rtable2
-kable(rtable2)
-
-
-# as.matrix(kpt)
-# mptable <- as.matrix(rtable)
-# str(mptable)
-# colnames(mptable)
-# cat(kable(mptable), sep = "\n")
+# str(k1)
+# Class 'knitr_kable'
+# atomic [1:5]  | Col 1| Col 2| Col 3| Col 4|
+#               |-----:|-----:|-----:|-----:
+#               |     1|     4|     7|    10|
+#               |     2|     5|     8|    11| ...
 #
-# kable(head(iris), caption = "Title of the table")
-# kable(head(mtcars), format = "pandoc", caption = "Title of the table")
-# # format numbers using , as decimal point, and ' as thousands separator
-# x = as.data.frame(matrix(rnorm(60, 1e+06, 10000), 10))
-# kable(x, format.args = list(decimal.mark = ",", big.mark = "'"))
+# ..- attr(*, "format")= chr "markdown"
+
+# attr(k1, "format")
+
+k1
+k1[1]
+k1[2]
+k1[3]
+k1[4]
+k1[5]
+# ajouter une ligne ? OK
+k1[6] <- k1[3]
+k1[7] <- "|...|...|...|...|"
+
+k1
+
+# Key attributes of a kable result
 #
-# kable(mtcars[, 1:7], longtable=TRUE, booktabs=TRUE)
+Kclass <- class(k1)
+Kformat <- attr(k1, "format")
 
-# --------------------
-#
-fptable <-as.data.frame(rtable)
-kable( reshape(fptable,
-               idvar = c("prediction"),
-               timevar = c("Var2"),
-               direction = "wide"),
-       align = "c"
-)
 
-fptable <-as.data.frame(rtable2)
-kable( reshape(fptable,
-               idvar = c("prediction"),
-               timevar = c("TrueStatus"),
-               direction = "wide"),
-       align = "c"
-)
+# make a kable result
+# make lines
+k2 <- c( "|  a|  b|", "|---|---|", "|2500|7000|")
+k2
 
-sessionInfo()
+class(k2) <- Kclass
+attr(k2, "format") <-  Kformat
+
+k2
+
+
