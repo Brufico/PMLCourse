@@ -9,16 +9,16 @@
 #' classoption: a4paper
 #' geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
 #' output:
+#'   html_document:
+#'     number_sections: yes
+#'     theme: readable
+#'     toc: yes
+#'     keep_md: true
 #'   pdf_document:
 #'     highlight: monochrome
 #'     number_sections: yes
 #'     toc: yes
 #'     toc_depth: 4
-#'
-#'   html_document:
-#'     number_sections: yes
-#'     theme: readable
-#'     toc: yes
 #' ---
 #'
 #' ----------------
@@ -141,7 +141,7 @@ kable(mcr) # works ok
 
 try(expr = kable(m0), silent = TRUE)
 
-try
+
 #'
 #' Analysis of Kable results+ modifications of those
 #' -------------------------------------------------

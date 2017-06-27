@@ -171,3 +171,140 @@ Collection of tries for tables in Markdown
 |     2|     5|     8|    11|
 
 
+* Without header (No, does not work)
+
+```
+|:-----|-----:|-----:|-----:|
+|     1|     4|     7|    10|
+|     2|     5|     8|    11|
+```
+
+|:-----|-----:|-----:|-----:|
+|     1|     4|     7|    10|
+|     2|     5|     8|    11|
+
+
+* Without header (No, does not work)
+
+```
+|:-----|-----:|-----:|-----:|
+|     1|     4|     7|    10|
+|     2|     5|     8|    11|
+
+```
+
+|:-----|-----:|-----:|-----:|
+|     1|     4|     7|    10|
+|     2|     5|     8|    11|
+
+
+
+
+
+* very intriguing, works on pdf, not html (Pandoc Markdown!)
+
+```
+----  ----  ----  ----
+   2     8    11   222
+   3     9    10   333
+   5     1   655   950        
+----  ----  ----  ----
+```
+
+----  ----  ----  ----
+   2     8    11   222
+   3     9    10   333
+   5     1   655   950        
+----  ----  ----  ----
+
+
+* Again
+
+```
+----  ----  ----  ----
+   2     8    11   222
+   3     9    10   333
+----  ----  ----  ----
+   2     8    11   222
+   3     9    10   333
+----  ----  ----  ----
+```
+
+----  ----  ----  ----
+   2     8    11   222
+   3     9    10   333
+----  ----  ----  ----
+   2     8    11   222
+   3     9    10   333
+----  ----  ----  ----
+
+* more
+
+```
+----  ----  ----  ----
+   2     8    11   222
+----  ----  ----  ----
+   3     9    10   333
+----  ----  ----  ----
+   2     8    11   222
+----  ----  ----  ----
+   3     9    10   333
+----  ----  ----  ----
+```
+
+----  ----  ----  ----
+   2     8    11   222
+----  ----  ----  ----
+   3     9    10   333
+----  ----  ----  ----
+   2     8    11   222
+----  ----  ----  ----
+   3     9    10   333
+----  ----  ----  ----
+
+
+* Very interesting! http://fletcher.github.io/MultiMarkdown-5/tables.html; AAARGH No!, not in Rstudio? This is MultiMarkdown
+
+```
+|             |          Grouping           ||
+First Header  | Second Header | Third Header |
+ ------------ | :-----------: | -----------: |
+Content       |          *Long Cell*        ||
+Content       |   **Cell**    |         Cell |
+
+New section   |     More      |         Data |
+And more      | With an escaped '\|'         ||
+[Prototype table]
+```
+
+
+|             |          Grouping           ||
+First Header  | Second Header | Third Header |
+ ------------ | :-----------: | -----------: |
+Content       |          *Long Cell*        ||
+Content       |   **Cell**    |         Cell |
+
+New section   |     More      |         Data |
+And more      | With an escaped '\|'         ||
+[Prototype table]
+
+
+
+
+*simpler?
+
+```
+First Header  | Second Header | Third Header |
+ ------------ | :------------ | -----------: |
+Content       |               *Long Cell*        ||
+Content       |   **Cell**    |         Cell |
+New section   |     More      |         Data |
+```
+
+
+
+First Header  | Second Header | Third Header |
+ ------------ | :------------ | -----------: |
+Content       |               *Long Cell*        ||
+Content       |   **Cell**    |         Cell |
+New section   |     More      |         Data |
