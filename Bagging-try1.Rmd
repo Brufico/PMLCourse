@@ -1,0 +1,241 @@
+---
+title: "PML- Week 3 - Bagging, personal tries"
+author: "Bruno Fischer Colonimos"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+fontsize: 12pt
+# urlcolor: blue
+documentclass: article
+classoption: a4paper
+geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
+output:
+  pdf_document: 
+    highlight: monochrome
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+
+  html_document: 
+    number_sections: yes
+    theme: readable
+    toc: yes
+    toc_depth: 4
+---
+
+----------------
+
+# Preliminary steps
+
+## Required packages (install before running)
+
+"caret", "party", "ElemStatLearn"
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries and auxiliary code (install before running)
+
+
+```{r libs, echo =TRUE, warning=FALSE, message=FALSE, results='hide'}
+library(knitr)
+library(caret)
+library(party) #trees
+
+
+specialpalette <- TRUE # controls the colour of the plots
+
+if (specialpalette) {
+        # palette color-blind-friendly: The palette with black (Winston, Cookbook for R,
+        # http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/)
+        cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73",
+                        "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+        
+        # modified BFC
+        cbfPalette <- cbbPalette
+        cbfPalette[3] <- cbbPalette[7]
+        cbfPalette[6] <- cbbPalette[3]
+        cbfPalette[8] <- cbbPalette[7]
+        
+        # * `set_default_scale` has been removed. If you want to change the default
+        # scale for an aesthetic, just create a function called
+        # `scale_aesthetic_continuous` or `scale_aesthetic_discrete` that returns the
+        # scale that you want. 
+        
+        scale_colour_discrete <- function(...) {
+                scale_colour_manual(values = cbbPalette)
+        }
+        
+        scale_fill_discrete <- function(...) {
+                scale_fill_manual(values = cbbPalette)
+        }
+        
+        scale_colour_continuous <- function(...) {
+                ggplot2::scale_colour_gradient(
+                        low = "#009900", high = "#FF0000")
+        }
+        
+}
+
+```
+
+Bagging Loess with Caret
+========================
+
+
+Ozone data
+-----------
+
+```{r ozoneData, cache=TRUE}
+library(ElemStatLearn)
+data(ozone,package="ElemStatLearn")
+ozone <- ozone[order(ozone$ozone),]
+
+dim(ozone)
+kable(head(ozone))
+```
+
+Set up customized bagging with the `bag()` function
+----------------------------------------------------
+
+
+### Intended values
+
+`bagobj <- bag()` produces an object of class "bag", with components:
+
+* *Summary* of components, verified on the course example using ctreeBag. 
+    * Some components may be specific to ctreebag
+
+```
+bagobj$fits == list of 1:B fits
+               each fits[i]:
+                     $fit == the actual model fit for that bagged samples 
+                     $vars == either NULL or 
+                              a vector of integers corresponding to
+                              which predictors were sampled for that model
+                     ** Undocumented:
+                     $oob == (??Out-of-bag error??)
+                             data.frame ~ 40-45 rows x 3 cols : 
+                                                 $pred
+                                                 $obs
+                                                 $key
+bagobj$control == a mirror of the arguments passedto bagControl :
+                     $fit == function
+                     $predict == function
+                     $aggregate == function
+                     ** Undocumented:
+                     $downSample = FALSE
+                     $oob = TRUE
+                     $allowParallel = TRUE
+                     
+bagobj$call == the call to bag ()
+bagobj$B == the number of bagging iterations B
+bagobj$dims == the dimensions of the training set
+
+```
+
+
+Verifications on the course example
+-----------------------------------
+
+### Use of the bag function
+
+```{r bag1, cache=TRUE, message=FALSE, warning=FALSE}
+set.seed(1357)
+
+predictors = data.frame(ozone=ozone$ozone)
+temperature = ozone$temperature
+treebag <- bag(predictors, temperature, B = 10,
+                bagControl = bagControl(fit = ctreeBag$fit,
+                                        predict = ctreeBag$pred,
+                                        aggregate = ctreeBag$aggregate))
+```
+
+
+
+```{r testexample, eval=FALSE}
+class(treebag) #=="bag"
+
+str(treebag$fits[[1]])
+
+treebag$fits[[1]]$
+
+# fits is  list 1:B of:
+treebag$fits[[1]]$fit # == tree model
+treebag$fits[[1]]$vars # == variable number (1)
+str(treebag$fits[[1]]$oob)
+
+treebag$control
+treebag$call
+treebag$B
+treebag$smallClass # = 1, undocumented
+treebag$dims
+
+```
+
+
+
+### plot the resulting predictions:
+
+```{r,dependson="bag1", fig.align = "center", fig.width = 5, fig.asp = 0.75, out.width = "0.48\\textwidth"}
+
+# option removed for HTML : , out.width = "0.48\\textwidth"
+
+## BFC with ggplot2 (modified from the original jLeek version)
+
+# graph basis layer
+g <- ggplot() +
+        geom_point(data = ozone, aes(ozone, temperature), alpha = 0.5)
+
+# individual resamples
+for (i in 1:10){
+        df2 <- data.frame(ozone = ozone$ozone,
+                  y = predict(treebag$fits[[i]]$fit, # !!le nom "y" est imposé !!
+                                  predictors))
+        g <- g + geom_line(data = df2,
+                           aes(ozone, y), color = "black", alpha = 0.5, size = 0.5)
+}
+
+# # last layer (bagged prediction)
+g <- g + geom_line(data = data.frame(ozone = ozone$ozone,
+                                     final = predict(treebag,predictors)),
+                   aes(ozone, final), color="black", size = 1.5)
+# # final touch
+g <- g + labs(title = "bagged prediction (blue)",
+              subtitle ="resampled predictions (red)") +
+        theme(plot.title = element_text(hjust = 0.5),
+              plot.subtitle = element_text(hjust = 0.5))
+
+g
+```
+
+
+
+
+```{r }
+
+predictors <- data.frame(ozone = ozone$ozone)
+temperature <- ozone$temperature
+
+loessfit <- function(x,y,...){
+        data <- as.data.frame(x)
+        data$y <- y
+        data <- data[order(data$ozone),] # reordered by ozone
+        modl <-loess(y ~ ozone,data=data,span= 0.3) 
+}
+
+loesspred <- function(object,x) {
+        x <- as.data.frame(x)
+        predict(object, newdata = x)
+}
+
+
+
+loessbag <- bag(predictors, temperature, B = 10,
+                bagControl = bagControl(fit = ctreeBag$fit,
+                                        predict = ctreeBag$pred,
+                                        aggregate = ctreeBag$aggregate))
+```
+
+
+
+
