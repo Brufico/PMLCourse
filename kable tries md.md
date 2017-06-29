@@ -1,13 +1,16 @@
 ---
-title: kable tries md.md
+title: "kable tries md.md"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 
 Collection of tries for tables in Markdown
 ==========================================
+
+Pipe_tables
+-----------
 
 * Classic
 
@@ -87,7 +90,7 @@ Collection of tries for tables in Markdown
 |  SOOO LOOONG AAA TITLE    |
 |-----:|-----:|-----:|-----:|
 | Col 1| Col 2| Col 3| Col 4|
-|------|------|------|------|
+|______|______|______|______|
 |     1|     4|     7|    10|
 |     2|     5|     8|    11|
 |     3|     6|     9|    12|
@@ -95,7 +98,7 @@ Collection of tries for tables in Markdown
 |  SOOO LOOONG AAA TITLE    |
 |-----:|-----:|-----:|-----:|
 | Col 1| Col 2| Col 3| Col 4|
-|------|------|------|------|
+|______|______|______|______|
 |     1|     4|     7|    10|
 |     2|     5|     8|    11|
 |     3|     6|     9|    12|
@@ -111,7 +114,9 @@ Collection of tries for tables in Markdown
 |     3|     6|     9|    12|
 |------|------|------|------|
 |     3|     6|     9|    12|
+
 ```
+
 | Col 1| Col 2| Col 3| Col 4|
 |:-----|-----:|-----:|-----:|
 |     1|     4|     7|    10|
@@ -121,7 +126,7 @@ Collection of tries for tables in Markdown
 |     3|     6|     9|    12|
 
 
-* suspension points end-o-columnd
+* suspension points end-of-column
 
 ```
 | Col 1| Col 2| Col 3| Col 4|
@@ -201,7 +206,7 @@ Collection of tries for tables in Markdown
 
 
 
-* very intriguing, works on pdf, not html (Pandoc Markdown!)
+* very intriguing, works on pdf, not html (Pandoc Markdown simple_tables)
 
 ```
 ----  ----  ----  ----
@@ -209,6 +214,7 @@ Collection of tries for tables in Markdown
    3     9    10   333
    5     1   655   950        
 ----  ----  ----  ----
+
 ```
 
 ----  ----  ----  ----
@@ -238,6 +244,30 @@ Collection of tries for tables in Markdown
    3     9    10   333
 ----  ----  ----  ----
 
+
+* Again2
+
+```
+----  ----  ----  ----
+   2     8    11   222
+----  ----  ----  ----   
+   3     9    10   333
+----  ----  ----  ----
+   2     8    11   222
+----  ----  ----  ----
+ 
+```
+
+----  ----  ----  ----
+   2     8    11   222
+----  ----  ----  ----
+   3     9    10   333
+----  ----  ----  ----
+   2     8    11   222
+----  ----  ----  ----
+
+
+
 * more
 
 ```
@@ -261,6 +291,41 @@ Collection of tries for tables in Markdown
 ----  ----  ----  ----
    3     9    10   333
 ----  ----  ----  ----
+
+
+* grid_tables
+
+
+```
++---------------+---------------+--------------------+
+| Right         | Left          | Centered           |
++==============:+:==============+:==================:+
+| Bananas       | $1.34         | built-in wrapper   |
++---------------+---------------+--------------------+
+```
+
+
++---------------+---------------+--------------------+
+| Right         | Left          | Centered           |
++==============:+:==============+:==================:+
+| Bananas       | $1.34         | built-in wrapper   |
++---------------+---------------+--------------------+
+
+
+
+```
++--------------:+:--------------+:------------------:+
+| Right         | Left          | Centered           |
++---------------+---------------+--------------------+
+
+```
++--------------:+:--------------+:------------------:+
+| Right         | Left          | Centered           |
++---------------+---------------+--------------------+
+
+
+
+
 
 
 * Very interesting! http://fletcher.github.io/MultiMarkdown-5/tables.html; AAARGH No!, not in Rstudio? This is MultiMarkdown
