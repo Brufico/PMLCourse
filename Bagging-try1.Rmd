@@ -174,7 +174,7 @@ treebag$dims
 
 
 
-### plot the resulting predictions:
+### course example : plot the resulting predictions:
 
 ```{r,dependson="bag1", fig.align = "center", fig.width = 5, fig.asp = 0.75, out.width = "0.48\\textwidth"}
 
@@ -213,29 +213,105 @@ g
 
 ```{r }
 
+# just to see (useful ?)
+ozone <- ozone[order(ozone$ozone), ]
+
+
+
+# prepare elements
 predictors <- data.frame(ozone = ozone$ozone)
 temperature <- ozone$temperature
 
 loessfit <- function(x,y,...){
+        message(paste0("\n", "loessfit"))
+        message(paste("x=",x))
         data <- as.data.frame(x)
         data$y <- y
         data <- data[order(data$ozone),] # reordered by ozone
-        modl <-loess(y ~ ozone,data=data,span= 0.3) 
+        modl <-loess(y ~ ., data = data , span = 0.3) 
+        modl
 }
 
-loesspred <- function(object,x) {
-        x <- as.data.frame(x)
+loesspred <- function(object, x) {
+        message(paste0("\n", "loesspred"))
+        x <- as.data.frame(x)        
+        message(paste("x=",  " rows=",  nrow(x), " colss=",  ncol(x)) )
+        print(x)        
+        message("\n")
+
+        
         predict(object, newdata = x)
 }
 
+# ctreeBag$aggregate
+
+loessaggregate <- function(x, type = "numeric") { # "numeric" ??
+        message("loessaggregate")
+        
+        if (is.matrix(x[[1]]) | is.data.frame(x[[1]])) {
+                pooled <- x[[1]] & NA
+                classes <- colnames(pooled)
+                for (i in 1:ncol(pooled)) {
+                        tmp <- lapply(x, function(y, col) y[, col], col = i)
+                        tmp <- do.call("rbind", tmp)
+                        pooled[, i] <- apply(tmp, 2, median)
+                }
+                if (type == "class") {
+                        out <- factor(classes[apply(pooled, 1, which.max)], 
+                                      levels = classes)
+                }
+                else out <- as.data.frame(pooled)
+        }
+        else {
+                x <- matrix(unlist(x), ncol = length(x))
+                out <- apply(x, 1, median)
+        }
+        out
+}
 
 
-loessbag <- bag(predictors, temperature, B = 10,
-                bagControl = bagControl(fit = ctreeBag$fit,
-                                        predict = ctreeBag$pred,
-                                        aggregate = ctreeBag$aggregate))
+# Call bag()
+set.seed(983)
+loessbag <- bag(predictors, temperature, B = 2, vars = NULL,
+                bagControl = bagControl(fit = loessfit,
+                                        predict = loesspred,
+                                        aggregate = loessaggregate))
+
 ```
 
 
 
+### Nex try : plot the resulting predictions:
+
+```{r,dependson="bag1", fig.align = "center", fig.width = 5, fig.asp = 0.75, out.width = "0.48\\textwidth"}
+
+# option removed for HTML : , out.width = "0.48\\textwidth"
+
+## BFC with ggplot2 (modified from the original jLeek version)
+
+# graph basis layer
+g <- ggplot() +
+        geom_point(data = ozone, aes(ozone, temperature), alpha = 0.5)
+
+# individual resamples
+for (i in 1:10){
+        df2 <- data.frame(ozone = ozone$ozone,
+                  y = predict(loessbag$fits[[i]]$fit, # !!le nom "y" est imposé !!
+                                  predictors))
+        g <- g + geom_line(data = df2,
+                           aes(ozone, y), color = "black", alpha = 0.5, size = 0.5)
+}
+
+# # last layer (bagged prediction)
+g <- g + geom_line(data = data.frame(ozone = ozone$ozone,
+                                     final = predict(treebag,predictors)),
+                   aes(ozone, final), color="black", size = 1.5)
+# # final touch
+g <- g + labs(title = "bagged prediction (blue)",
+              subtitle ="resampled predictions (red)") +
+        theme(plot.title = element_text(hjust = 0.5),
+              plot.subtitle = element_text(hjust = 0.5))
+
+g
+```
 
