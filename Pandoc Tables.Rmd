@@ -7,12 +7,37 @@ output:
   pdf_document: default
 ---
 
+----------------
+
+
+Some Inline HTML
+
+<style>
+
+table {
+    width: 100%;
+    border-top-style: solid;
+    border-top-width: medium
+    border-top-color: red
+    border-bottom-style: solid;
+    border-bottom-width: medium
+    border-bottom-color: red
+}
+
+</style>
+
+
 
 ```{r}
 library(knitr)
 library(markdown)
 library(pander)
 ```
+
+
+
+
+
 
 
 ```{r , results='asis'}
@@ -26,6 +51,7 @@ pandoc.table(m, style = 'simple')
 ```
  
  texte
+ 
        &nbsp;         mpg   cyl   disp   hp 
 ------------------- ----- ----- ------ ----
    **Mazda RX4**     21     6    160   110 
@@ -47,5 +73,4 @@ mm <- as.matrix(m[3:8,])
 
 colnames(mm) <- NULL
 pandoc.table(mm, style = 'simple')
-
 ```
