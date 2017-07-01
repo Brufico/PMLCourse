@@ -1,0 +1,287 @@
+---
+title: 'PML Week 2, lecture 2.9 - Predicting with regression and multiple covariates'
+subtitle: "Practical Machine Learning Week 2 : The caret package lecture 2.9"
+author:  "Jeff Leek, notes by Bruno Fischer Colonimos"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+# header-includes: \usepackage{graphicx} # for unmodded template
+fontsize: 12pt
+# urlcolor: blue
+documentclass: article
+classoption: a4paper
+geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
+footer: \thetitle \ \textemdash \ \thepage 
+output:
+  pdf_document: 
+    # template: test_latex_temp
+    template: latex_temp2.latex
+    highlight: monochrome
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+    
+  html_document:
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+---
+
+----------------
+
+
+
+Preliminary code
+====================
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width=4, fig.asp= 0.75 , fig.align="center", fig.keep ="all", fig.show="hold", out.width="0.48\\textwidth")
+
+# , fig.align="center"
+# not for HTML : out.width="0.48\\textwidth"
+```
+
+
+## Required packages (install before running)
+
+"caret", "ISLR"       
+
+
+
+## Libraries and auxiliary code (install before running)
+
+```{r libs, echo =TRUE, warning=FALSE, message=FALSE, results='hide'}
+library(knitr)
+library(caret)
+library(ggplot2)
+# library(party) #trees
+library(ISLR) # example
+
+# adjust Gggplot2 theme and color palette
+
+bwtheme <- TRUE
+specialpalette <- TRUE # controls the colour of the plots
+
+if (bwtheme) {
+        theme_set(theme_bw())
+}
+
+if (specialpalette) {
+        # palette color-blind-friendly: The palette with black (Cookbook for R,
+        # http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/)
+        cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73",
+                        "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+        
+        # modified BFC
+        cbfPalette <- cbbPalette
+        cbfPalette[3] <- cbbPalette[7]
+        cbfPalette[6] <- cbbPalette[3]
+        cbfPalette[8] <- cbbPalette[7]
+        
+        # * `set_default_scale` has been removed. If you want to change the default
+        # scale for an aesthetic, just create a function called
+        # `scale_aesthetic_continuous` or `scale_aesthetic_discrete` that returns the
+        # scale that you want. 
+        
+        scale_colour_discrete <- function(...) {
+                scale_colour_manual(values = cbbPalette)
+        }
+        
+        scale_fill_discrete <- function(...) {
+                scale_fill_manual(values = cbbPalette)
+        }
+        
+        scale_colour_continuous <- function(...) {
+                ggplot2::scale_colour_gradient(
+                        low = "#009900", high = "#FF0000")
+        }
+        
+}
+
+```
+
+
+
+
+Example: Wage data
+====================
+
+
+```{r data, echo = FALSE,}
+
+data(Wage)
+Wage <- subset(Wage,select=-c(logwage))
+summary(Wage)
+```
+
+Get training/test sets
+======================
+
+```{r }
+set.seed(234)
+inTrain <- createDataPartition(y=Wage$wage,
+                               p=0.7, list=FALSE)
+training <- Wage[inTrain,]; testing <- Wage[-inTrain,]
+dim(training); dim(testing)
+```
+
+
+Feature plot
+=============
+
+```{r fig.width=10, out.width="1.1\\textwidth"}
+
+color_transparent <- function(color, alpha) {adjustcolor(color, alpha.f = alpha)}
+
+featurePlot(x=training[,c("age","education","jobclass")],
+            y = training$wage,
+            plot="pairs",
+            col=color_transparent("black", alpha=0.1))
+```
+
+
+Plot age versus wage
+====================
+
+```{r }
+# Base
+ggplot(data=training, aes(age,wage)) +
+        geom_point(alpha=0.3) + labs(title = "Base plot")
+```
+
+```{r }
+# coloured
+ggplot(data=training, aes(age,wage)) +
+        geom_point(aes(colour=jobclass), alpha = 0.3) + 
+        labs(title = "Coloured by jobclass")
+
+ggplot(data=training, aes(age,wage)) +
+        geom_point(aes(colour=education), alpha=0.3) + 
+        labs(title = "Coloured by education")
+```
+
+Fit a linear model
+==================
+
+$$ ED_i = b_0 + b_1 age + b_2 I(Jobclass_i="Information") + \sum_{k=1}^4 \gamma_k I(education_i= level k) $$
+
+## with the lm function
+
+```{r}
+lmdirect <- lm(wage ~ age + jobclass + education,
+               ,data=training)
+summary(lmdirect)
+```
+
+
+
+## with caret
+
+```{r }
+modFit<- train(wage ~ age + jobclass + education,
+               method = "lm",data=training)
+finMod <- modFit$finalModel
+print(modFit)
+summary(modFit) # the caret model ==
+# summary(finMod) # the lm model ==  same output
+```
+
+** Remark:**
+levels(training$education) #==>
+Education levels: "1. < HS Grad", "2. HS Grad", "3. Some College", "4. College Grad", "5. Advanced Degree"
+
+
+Diagnostics
+============
+
+## Predefined diagnostics plots (on final lm model)
+
+```{r , fig.height = 6, fig.width = 6}
+curpar <- par("mfrow")
+par(mfrow=c(3,2))
+plot(finMod,1,pch=19,cex=0.5,col="#00000040") #' residuals vs fitted
+plot(finMod,which=2,pch=19,cex=0.5,col="#00000040") # Normal Q-Q plot residuals
+plot(finMod,which=3,pch=19,cex=0.5,col="#00000040") # Scale-Location = sqrt(residuals) vs fitted
+plot(finMod,which=4,pch=19,cex=0.5,col="#00000040") # Cook's distance vs index
+plot(finMod,which=5,pch=19,cex=0.5,col="#00000040") # Std residuals vs leverage (with cook's distance levels)
+plot(finMod,which=6,pch=19,cex=0.5,col="#00000040") # Cook's dist vs leverage (hi/(1-hi))
+
+par(mfrow=curpar)
+
+# by default
+curpar <- par("mfrow")
+par(mfrow=c(2,2))
+plot(finMod,pch=19,cex=0.5, col="#00000040")
+par(mfrow=curpar)
+
+
+```
+
+## residuals vs fitted via ggplot2
+
+```{r }
+train2 <- cbind(training, data.frame(fitted = finMod$fitted, resid = finMod$residuals))
+ggplot(data = train2, aes(fitted, resid)) +
+        geom_point(alpha = 0.3) +
+        geom_smooth(color = 2, method = "loess")
+```
+
+
+## Color by variables not used in the model
+
+
+```{r }
+
+ggplot(data = train2, aes(fitted, resid, color = race)) + geom_point(alpha =0.5)
+```
+
+
+## Plot residuals by index
+
+```{r }
+# plot(finMod$residuals, pch=19)
+
+ggplot(data = data.frame(Index = 1:length(finMod$residuals), 
+                         Residual=finMod$residuals),
+       aes(Index,Residual)) +
+        geom_point(, alpha = 0.3) + geom_smooth()
+```
+
+**Conclusion**: No trend!!!
+
+
+## Predicted versus truth in test set
+
+
+```{r }
+ggplot(data = cbind(testing,
+                    data.frame(pred=predict(modFit, testing))
+                    ),
+       aes(wage, pred, colour=year)) +
+        geom_point()
+
+```
+
+
+## If you want to use all covariates
+
+
+```{r , warning = FALSE}
+modFitAll<- train(wage ~ .,data=training,method="lm")
+
+ggplot(data = cbind(testing,
+                    data.frame(prediction=predict(modFitAll, testing))
+                    ),
+       aes(wage, prediction)) +
+        geom_point(alpha = 0.5)
+
+```
+
+
+Notes and further reading
+=========================
+
+* Often useful in combination with other models
+* [Elements of statistical learning](http://www-stat.stanford.edu/~tibs/ElemStatLearn/)
+* [Modern applied statistics with S](http://www.amazon.com/Modern-Applied-Statistics-W-N-Venables/dp/0387954570)
+* [Introduction to statistical learning](http://www-bcf.usc.edu/~gareth/ISL/)
+
