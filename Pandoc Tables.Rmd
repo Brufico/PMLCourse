@@ -17,11 +17,11 @@ Some Inline HTML
 table {
     width: 100%;
     border-top-style: solid;
-    border-top-width: medium
-    border-top-color: red
+    border-top-width: medium;
+    border-top-color: initial;
     border-bottom-style: solid;
-    border-bottom-width: medium
-    border-bottom-color: red
+    border-bottom-width: medium;
+    border-bottom-color: initial;
 }
 
 </style>
@@ -65,6 +65,12 @@ jhgj
  **Mazda RX4 Wag**   21     6    160   110 
   **Datsun 710**    22.8    4    108    93 
 ------------------- ----- ----- ------ ----
+ 
+Separation
+
+--------
+
+Separation
 
 
 ```{r , results='asis'}
@@ -74,3 +80,6 @@ mm <- as.matrix(m[3:8,])
 colnames(mm) <- NULL
 pandoc.table(mm, style = 'simple')
 ```
+
+
+And some text to see....

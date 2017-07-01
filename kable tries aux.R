@@ -198,3 +198,6 @@ sessionInfo()
 kable
 
 knitr::kable_markdown
+
+
+
