@@ -1,0 +1,604 @@
+---
+title: "PML - lecture 3.2 - Bagging, personal attempts"
+subtitle: "Practical Machine Learning Week 3 - lecture 3.2 - personal attempts"
+author: "Bruno Fischer Colonimos"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+fontsize: 12pt
+# urlcolor: blue
+documentclass: article
+classoption: a4paper
+geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
+# for the modified latex template
+# header-includes: \usepackage{graphicx} # already in template
+footer:  \thetitle \ \textemdash \ \thepage
+output:
+  pdf_document: 
+    # modified latex template
+    # template: test_latex_temp
+    template: latex_temp2.latex
+    highlight: monochrome
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+
+  html_document: 
+    number_sections: yes
+    theme: readable
+    toc: yes
+    toc_depth: 4
+---
+
+----------------
+
+# Preliminary steps
+
+## Required packages (install before running)
+
+"caret", "party", "ElemStatLearn"
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.show = "hold", fig.align = "center", fig.width = 5, fig.asp = 0.75, out.width = "0.48\\textwidth")
+```
+
+## Libraries and auxiliary code (install before running)
+
+
+```{r libs, echo =TRUE, warning=FALSE, message=FALSE, results='hide'}
+library(knitr)
+library(caret)
+library(party) #trees
+library(pander)
+
+
+themechange <- TRUE # change to theme_bw
+specialpalette <- TRUE # controls the colour of the plots
+
+if (themechange) {
+        theme_set(theme_bw() +
+                          theme(plot.title = element_text(hjust = 0.5),
+                                plot.subtitle = element_text(hjust = 0.5)))
+}
+
+
+if (specialpalette) {
+        # palette color-blind-friendly: The palette with black (Winston, Cookbook for R,
+        # http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/)
+        cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73",
+                        "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+        
+        # modified BFC
+        cbfPalette <- cbbPalette
+        cbfPalette[3] <- cbbPalette[7]
+        cbfPalette[6] <- cbbPalette[3]
+        cbfPalette[8] <- cbbPalette[7]
+        
+        # * `set_default_scale` has been removed. If you want to change the default
+        # scale for an aesthetic, just create a function called
+        # `scale_aesthetic_continuous` or `scale_aesthetic_discrete` that returns the
+        # scale that you want. 
+        
+        scale_colour_discrete <- function(...) {
+                scale_colour_manual(values = cbbPalette)
+        }
+        
+        scale_fill_discrete <- function(...) {
+                scale_fill_manual(values = cbbPalette)
+        }
+        
+        scale_colour_continuous <- function(...) {
+                ggplot2::scale_colour_gradient(
+                        low = "#009900", high = "#FF0000")
+        }
+        
+}
+
+```
+
+Bagging Loess with Caret
+========================
+
+
+Ozone data
+-----------
+
+```{r ozoneData, cache=TRUE}
+library(ElemStatLearn)
+data(ozone,package="ElemStatLearn")
+ozone <- ozone[order(ozone$ozone),]
+
+dim(ozone)
+pander(head(ozone))
+```
+
+
+Set up customized bagging with the `bag()` function
+----------------------------------------------------
+
+### Understanding The `fit`, `pred` and `aggregate` functions
+
+Manual run of the functions
+
+```{r, eval=FALSE}
+
+## fit ==================================================================
+# ctreeBag$fit ==> just fits a model and return a model object
+function (x, y, ...) 
+{
+    loadNamespace("party")
+    data <- as.data.frame(x)
+    data$y <- y
+    party::ctree(y ~ ., data = data)
+}
+
+
+## pred ==================================================================
+# ctreeBag$pred
+function (object, x) 
+{
+    if (!is.data.frame(x)) 
+        x <- as.data.frame(x)
+    obsLevels <- levels(object@data@get("response")[, 1])
+    if (!is.null(obsLevels)) {
+        rawProbs <- party::treeresponse(object, x)
+        probMatrix <- matrix(unlist(rawProbs), ncol = length(obsLevels), 
+            byrow = TRUE)
+        out <- data.frame(probMatrix)
+        colnames(out) <- obsLevels
+        rownames(out) <- NULL
+    }
+    else out <- unlist(party::treeresponse(object, x))
+    out
+}
+
+# ==> basically, for regression pbs, returns the predictions
+# as `predict(object, newdata = x)`
+
+
+## aggregate ==================================================================
+## ctreeBag$aggregate
+function (x, type = "class") 
+{
+    if (is.matrix(x[[1]]) | is.data.frame(x[[1]])) {
+        pooled <- x[[1]] & NA
+        classes <- colnames(pooled)
+        for (i in 1:ncol(pooled)) {
+            tmp <- lapply(x, function(y, col) y[, col], col = i)
+            tmp <- do.call("rbind", tmp)
+            pooled[, i] <- apply(tmp, 2, median)
+        }
+        if (type == "class") {
+            out <- factor(classes[apply(pooled, 1, which.max)], 
+                levels = classes)
+        }
+        else out <- as.data.frame(pooled)
+    }
+    else {
+        x <- matrix(unlist(x), ncol = length(x))
+        out <- apply(x, 1, median)
+    }
+    out
+}
+
+
+
+## Manual run of `aggregate` ====================================
+ 
+
+# some test data
+m1 <-   data.frame(P1 = 10 + abs(rnorm(n=5, 1, 1)),
+                   N1 = - (10 + abs(rnorm(n=5, 1, 1))))
+m2 <-  data.frame(P2 = 20 + abs(rnorm(n=5, 1, 1)),
+                  N2 = - (20 + abs(rnorm(n=5, 1, 1))))
+m3 <-  data.frame(P3 = 30 + abs(rnorm(n=5,0,1)),
+                  N3 = - (30 + abs(rnorm(n=5,1,1))))
+
+
+# begin test
+xx <- list(m1,m2,m3)
+
+
+# step 1 only ----------
+if (is.matrix(xx[[1]]) | is.data.frame(xx[[1]])) {
+        xpooled <- xx[[1]] & NA
+        classes <- colnames(xpooled)
+
+}
+
+xpooled # copy of xx[[1]], with value NA everywhere
+classes # the names of the first 2 columns of xx[[1]]
+
+
+# step 1 + 2 -----------
+
+# if (is.matrix(xx[[1]]) | is.data.frame(xx[[1]])) {
+        xpooled <- xx[[1]] & NA
+        classes <- colnames(xpooled)
+        message(xpooled)
+        message(classes)
+        for (i in 1:ncol(xpooled)) {
+        # i <- 1 # the column index of dframes/matrices xx[[1]], ..., xx[[j]]
+                message(paste("i=",i))
+                tmp <- lapply(xx, function(y, col) {y[, col]}, col = i)
+                tmp # the list of all columns number i of dframes/matrices xx[[j]],
+                    # with each column of dframe/matrix==> one row of tmp
+
+                tmp <- do.call("rbind", tmp) # make matrix with list,
+                # get median of the ith each col of tmp, store in the ith
+                xpooled[, i] <- apply(tmp, 2, median)
+                # median across i, for each j,
+                # and store in the ith column of xpooled
+
+                message ("xpooled = ", xpooled)
+
+                        }
+
+# }
+
+
+```
+
+
+
+
+### Intended values
+
+`bagobj <- bag()` produces an object of class "bag", with components:
+
+* *Summary* of components, verified on the course example using ctreeBag. 
+    * Some components may be specific to ctreebag
+
+```
+bagobj$fits == list of 1:B fits
+               each fits[i]:
+                     $fit == the actual model fit for that bagged samples 
+                     $vars == either NULL or 
+                              a vector of integers corresponding to
+                              which predictors were sampled for that model
+                     ** Undocumented:
+                     $oob == (??Out-of-bag error??)
+                             data.frame ~ 40-45 rows x 3 cols : 
+                                                 $pred
+                                                 $obs
+                                                 $key
+bagobj$control == a mirror of the arguments passedto bagControl :
+                     $fit == function
+                     $predict == function
+                     $aggregate == function
+                     ** Undocumented:
+                     $downSample = FALSE
+                     $oob = TRUE
+                     $allowParallel = TRUE
+                     
+bagobj$call == the call to bag ()
+bagobj$B == the number of bagging iterations B
+bagobj$dims == the dimensions of the training set
+
+```
+
+
+Verifications on the course example
+-----------------------------------
+
+### Use of the bag function
+
+```{r bag1, cache=TRUE, message=FALSE, warning=FALSE}
+set.seed(1357)
+
+predictors = data.frame(ozone=ozone$ozone)
+temperature = ozone$temperature
+treebag <- bag(predictors, temperature, B = 10,
+                bagControl = bagControl(fit = ctreeBag$fit,
+                                        predict = ctreeBag$pred,
+                                        aggregate = ctreeBag$aggregate))
+```
+
+
+
+```{r testexample, eval=FALSE}
+class(treebag) #=="bag"
+
+str(treebag$fits[[1]])
+
+treebag$fits[[1]]$
+
+# fits is  list 1:B of:
+treebag$fits[[1]]$fit # == tree model
+treebag$fits[[1]]$vars # == variable number (1)
+str(treebag$fits[[1]]$oob)
+
+treebag$control
+treebag$call
+treebag$B
+treebag$smallClass # = 1, undocumented
+treebag$dims
+
+```
+
+
+
+### course example : plot the resulting predictions:
+
+```{r,dependson="bag1"}
+
+# option removed for HTML : , out.width = "0.48\\textwidth"
+
+## BFC with ggplot2 (modified from the original jLeek version)
+
+# graph basis layer
+g <- ggplot() +
+        geom_point(data = ozone, aes(ozone, temperature), alpha = 0.5)
+
+# individual resamples
+for (i in 1:10){
+        df2 <- data.frame(ozone = ozone$ozone,
+                  y = predict(treebag$fits[[i]]$fit, # !!le nom "y" est imposé !!
+                                  predictors))
+        g <- g + geom_line(data = df2,
+                           aes(ozone, y), color = "black", alpha = 0.5, size = 0.5)
+}
+
+# # last layer (bagged prediction)
+g <- g + geom_line(data = data.frame(ozone = ozone$ozone,
+                                     final = predict(treebag,predictors)),
+                   aes(ozone, final), color="black", size = 1.5)
+# # final touch
+g <- g + labs(title = "bagged prediction (Thick)",
+              subtitle ="resampled predictions (thin)") 
+# Display
+g
+```
+
+
+Try bagging loess prediction
+-----------------------------
+
+### bagging with caret
+
+```{r }
+
+# just to see (useful ?)
+ozone <- ozone[order(ozone$ozone), ]
+
+
+
+# prepare elements
+predictors <- data.frame(ozone = ozone$ozone)
+temperature <- ozone$temperature
+
+loessfit <- function(x,y,...){
+        # message(paste0("\n", "loessfit"))
+        # message(paste("x=",x))
+        data <- as.data.frame(x)
+        data$y <- y
+        data <- data[order(data$ozone),] # reordered by ozone
+        modl <-loess(y ~ ., data = data , span = 0.3) 
+        modl
+}
+
+loesspred <- function(object, x) {
+        # message(paste0("\n", "loesspred"))
+        x <- as.data.frame(x)        
+        # message(paste("x=",  " rows=",  nrow(x), " colss=",  ncol(x)) )
+        # str(x)
+        # print(x)        
+        # message("\n")
+        predict(object, newdata = x)
+}
+
+# ctreeBag$aggregate
+
+loessaggregate <- function(x, type = "numeric") { # "numeric" ??
+        message("loessaggregate")
+        
+        if (is.matrix(x[[1]]) | is.data.frame(x[[1]])) {
+                pooled <- x[[1]] & NA
+                classes <- colnames(pooled)
+                for (i in 1:ncol(pooled)) {
+                        tmp <- lapply(x, function(y, col) y[, col], col = i)
+                        tmp <- do.call("rbind", tmp)
+                        pooled[, i] <- apply(tmp, 2, mean) # aggregate with the mean
+                }
+                if (type == "class") {
+                        out <- factor(classes[apply(pooled, 1, which.max)], 
+                                      levels = classes)
+                }
+                else out <- as.data.frame(pooled)
+        }
+        else {
+                x <- matrix(unlist(x), ncol = length(x))
+                out <- apply(x, 1, mean) # aggregate with the mean
+        }
+        out
+}
+
+
+# Call bag(), with 100 resamples
+set.seed(983)
+loessbag <- bag(predictors, temperature, B = 100,
+                bagControl = bagControl(fit = loessfit,
+                                        predict = loesspred,
+                                        aggregate = loessaggregate))
+
+```
+
+
+
+### plot the resulting predictions:
+
+```{r,dependson="bag1"}
+
+# option removed for HTML : , out.width = "0.48\\textwidth"
+
+
+# graph basis layer
+g <- ggplot() +
+        geom_point(data = ozone, aes(ozone, temperature), alpha = 0.5)
+
+# individual resamples
+for (i in 1:10){
+        df2 <- data.frame(ozone = ozone$ozone,
+                  y = predict(loessbag$fits[[i]]$fit, # !!le nom "y" est imposé !!
+                                  predictors))
+        g <- g + geom_line(data = df2,
+                           aes(ozone, y), color = "black", alpha = 0.5, size = 0.5)
+}
+
+# # last layer (bagged prediction)
+g <- g + geom_line(data = data.frame(ozone = ozone$ozone,
+                                     final = predict(loessbag, predictors)),
+                   aes(ozone, final), color="black", size = 1.5)
+# # final touch
+g <- g + labs(title = "bagged prediction (thick)",
+              subtitle ="resampled predictions (thin)") 
+# Display
+g
+```
+
+
+---
+
+$$\mathbf{Mission \ 1 \ accomplished}$$
+
+---
+
+Try bagging Linear regressions prediction
+-----------------------------------------
+
+We will try to predict ozone with all the othe predictors
+
+### data for lm
+```{r}
+library(pander)
+data("ozone")
+pander(head(ozone))
+```
+
+### Get training/test sets
+
+```{r }
+set.seed(234)
+inTrain <- createDataPartition(y=ozone$ozone,
+                               p=0.7, list=FALSE)
+training <- ozone[inTrain,]
+testing <- ozone[-inTrain,]
+dim(training)
+dim(testing)
+```
+
+
+
+### data exploration
+
+```{r, fig.width=8, out.width="\\textwidth"}
+color_transparent <- function(color, alpha) {adjustcolor(color, alpha.f = alpha)}
+
+featurePlot(x=training[,c("radiation","temperature","wind")],
+            y = training$ozone,
+            plot="pairs",
+            col=color_transparent("black", alpha=0.5))
+```
+
+**linear model**
+
+```{r}
+lmod <- lm(ozone ~ . , data = training )
+summary(lmod)
+```
+
+**Diagnostics**
+
+```{r, fig.width=8, out.width="\\textwidth"}
+curpar <- par("mfrow")
+par(mfrow=c(2,2))
+plot(lmod)
+par(mfrow=curpar)
+```
+
+Some nonlienarity?
+
+```{r}
+trainpr <- cbind(training, data.frame(fit=lmod$fitted.values, res=lmod$residuals ))
+ggplot(data = trainpr, aes(radiation, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+ggplot(data = trainpr, aes(temperature, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+ggplot(data = trainpr, aes(wind, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+```
+
+
+**Attempt 2 linear model**
+
+```{r}
+ltraining <- cbind(training[-1], data.frame(logoz=log(training$ozone)))
+lmod2 <- lm(logoz ~ . , data = ltraining )
+summary(lmod2)
+```
+
+
+**Diagnostics**
+
+```{r , fig.width=8, out.width="\\textwidth" }
+curpar <- par("mfrow")
+par(mfrow=c(2,2))
+plot(lmod2)
+par(mfrow=curpar)
+```
+
+
+```{r warning=FALSE}
+trainpr <- cbind(training, data.frame(fit=lmod2$fitted.values, 
+                                      res=lmod2$residuals ))
+ggplot(data = trainpr, aes(radiation, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+ggplot(data = trainpr, aes(temperature, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+ggplot(data = trainpr, aes(wind, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+```
+
+Coefficients
+
+```{r}
+exc <- exp(lmod2$coefficients)
+exc
+
+```
+
+`exc[1]`
+
+
+$$ozone = `exc[1]` \cdot `exc[2]`^{radiation} \cdot `exc[3]`^{temperature} \cdot `exc[4]` ^{wind}   $$
+
+```{r , results="asis"}
+
+e0 <- format(exc[1], digits = 4)
+e1 <- format(exc[2], digits = 4)
+e2 <- format(exc[3], digits = 4)
+e3 <- format(exc[4], digits = 4)
+
+cat(paste(
+        c("$$", "ozone = ", 
+      e0, " \\cdot ", 
+      e1, "^{radiation}"  , " \\cdot ",
+      e2, "^{temperature}"  ," \\cdot ",
+      e3, "^{wind}"  ,"$$"),
+      collapse = ""
+      ))
+
+```
+
+
+
