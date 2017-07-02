@@ -1,0 +1,340 @@
+---
+title: 'PML - lecture 2.9 - Predicting with regression and multiple covariates'
+subtitle: "Practical Machine Learning Week 2 lecture 2.9 : Multiple regression"
+author:  "Jeff Leek, notes by Bruno Fischer Colonimos"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+# header-includes: \usepackage{graphicx} # for unmodded template
+fontsize: 12pt
+# urlcolor: blue
+documentclass: article
+classoption: a4paper
+geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
+footer: \thetitle \ \textemdash \ \thepage 
+output:
+  pdf_document: 
+    # template: test_latex_temp
+    template: latex_temp2.latex
+    highlight: monochrome
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+    
+  html_document:
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+---
+
+----------------
+
+
+
+Preliminary code
+================
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.keep="all" ,fig.width=4, fig.asp= 0.75 , fig.align="center", fig.keep ="all", fig.show="hold", out.width="0.48\\textwidth")
+
+# , fig.align="center"
+# not for HTML : out.width="0.48\\textwidth"
+```
+
+
+## Required packages (install before running)
+
+"caret", "ISLR"       
+
+
+
+## Libraries and auxiliary code (install before running)
+
+```{r libs, echo =TRUE, warning=FALSE, message=FALSE, results='hide'}
+library(knitr)
+library(caret)
+library(ggplot2)
+# library(party) #trees
+library(ISLR) # example
+library(pander)
+library(ElemStatLearn)
+
+# adjust Gggplot2 theme and color palette
+
+bwtheme <- TRUE
+specialpalette <- TRUE # controls the colour of the plots
+
+if (bwtheme) {
+        theme_set(theme_bw())
+}
+
+if (specialpalette) {
+        # palette color-blind-friendly: The palette with black (Cookbook for R,
+        # http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/)
+        cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73",
+                        "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+        
+        # modified BFC
+        cbfPalette <- cbbPalette
+        cbfPalette[3] <- cbbPalette[7]
+        cbfPalette[6] <- cbbPalette[3]
+        cbfPalette[8] <- cbbPalette[7]
+        
+        # * `set_default_scale` has been removed. If you want to change the default
+        # scale for an aesthetic, just create a function called
+        # `scale_aesthetic_continuous` or `scale_aesthetic_discrete` that returns the
+        # scale that you want. 
+        
+        scale_colour_discrete <- function(...) {
+                scale_colour_manual(values = cbbPalette, ...)
+        }
+        
+        scale_fill_discrete <- function(...) {
+                scale_fill_manual(values = cbbPalette, ...)
+        }
+        
+        scale_colour_continuous <- function(...) {
+                ggplot2::scale_colour_brewer("Greys", ...)
+        }
+        
+}
+
+```
+
+Data
+=====
+
+Ozone Data. We will try to predict ozone with all the other predictors
+
+```{r}
+
+data(ozone,package="ElemStatLearn")
+
+pander(head(ozone))
+```
+
+### Get training/test sets
+
+```{r }
+set.seed(234)
+inTrain <- createDataPartition(y=ozone$ozone,
+                               p=0.7, list=FALSE)
+training <- ozone[inTrain,]
+testing <- ozone[-inTrain,]
+dim(training)
+dim(testing)
+```
+
+
+
+Data exploration
+=================
+
+Feature plot
+------------
+
+```{r, fig.width=8, out.width="\\textwidth"}
+color_transparent <- function(color, alpha) {adjustcolor(color, alpha.f = alpha)}
+
+featurePlot(x=training[,c("radiation","temperature","wind")],
+            y = training$ozone,
+            plot="pairs",
+            col=color_transparent("black", alpha=0.5))
+```
+
+variable distributions
+----------------------
+
+
+```{r}
+nc_o <- nclass.FD(training$ozone)
+ggplot(training, aes(x = ozone)) + geom_histogram(bins=nc_o)
+
+nc_o <- nclass.FD(training$ozone)
+ggplot(training, aes(x = log(ozone))) + geom_histogram(bins=nc_o)
+
+nc_r <- nclass.FD(training$radiation)
+ggplot(training, aes(x = radiation)) + geom_histogram(bins=nc_r)
+
+nc_t <- nclass.FD(training$temperature)
+ggplot(training, aes(x = temperature)) + geom_histogram(bins=nc_t)
+
+nc_w <- nclass.FD(training$wind)
+ggplot(training, aes(x = wind)) + geom_histogram(bins=nc_w)
+
+
+
+```
+
+
+
+linear model, attempt1
+======================
+
+Fit
+---
+
+```{r}
+lmod <- lm(ozone ~ . , data = training )
+summary(lmod)
+```
+
+Diagnostics
+-----------
+
+```{r, fig.width=8, out.width="\\textwidth"}
+curpar <- par("mfrow")
+par(mfrow=c(2,2))
+plot(lmod)
+par(mfrow=curpar)
+```
+
+Some nonlienarity?
+
+```{r}
+trainpr <- cbind(training, data.frame(fit=lmod$fitted.values, res=lmod$residuals ))
+ggplot(data = trainpr, aes(radiation, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+ggplot(data = trainpr, aes(temperature, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+ggplot(data = trainpr, aes(wind, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+```
+
+
+linear model, attempt2
+======================
+ 
+Fit
+---
+```{r}
+ltraining <- cbind(training[-1], data.frame(logoz=log(training$ozone)))
+lmod2 <- lm(logoz ~ . , data = ltraining )
+summary(lmod2)
+```
+
+
+Diagnostics
+-----------
+
+```{r , fig.width=8, out.width="\\textwidth" }
+curpar <- par("mfrow")
+par(mfrow=c(2,2))
+plot(lmod2)
+par(mfrow=curpar)
+```
+
+
+```{r warning=FALSE}
+trainpr <- cbind(training, data.frame(fit=lmod2$fitted.values, 
+                                      res=lmod2$residuals ))
+ggplot(data = trainpr, aes(radiation, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+ggplot(data = trainpr, aes(temperature, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+ggplot(data = trainpr, aes(wind, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+```
+
+Seems ok...
+
+Coefficients
+------------
+
+```{r}
+exc <- exp(lmod2$coefficients)
+exc
+```
+
+Regression equation
+-------------------
+
+```{r , results="asis"}
+
+e0 <- format(exc[1], digits = 4)
+e1 <- format(exc[2], digits = 4)
+e2 <- format(exc[3], digits = 4)
+e3 <- format(exc[4], digits = 4)
+
+cat(paste(
+        c("$$", "ozone = ", 
+      e0, " \\cdot ", 
+      e1, "^{radiation}"  , " \\cdot ",
+      e2, "^{temperature}"  ," \\cdot ",
+      e3, "^{wind}"  ,"$$"),
+      collapse = ""
+      ))
+
+```
+
+
+Verification: Truth vs prediction
+------------
+
+```{r}
+trainp <- cbind(training,
+                data.frame(predictions = exp(predict(lmod2, x = training))) )
+trainp$residuals = trainp$ozone - trainp$predictions
+ggplot(data = trainp,aes(ozone, predictions)) + geom_point()
+
+ggplot(data = trainp,aes(ozone, residuals)) + geom_point()
+
+```
+
+Third attempt: Box-cox
+======================
+
+
+```{r}
+set.seed(32343)
+modelFit <- train(ozone ~.,data=training,
+                  preProcess=c("BoxCox"),
+                  method="lm")
+modelFit
+
+fmod <- modelFit$finalModel
+summary(fmod)
+
+```
+
+
+Diagnostics
+-----------
+
+```{r , fig.width=8, out.width="\\textwidth" }
+curpar <- par("mfrow")
+par(mfrow=c(2,2))
+plot(fmod)
+par(mfrow=curpar)
+```
+
+
+```{r warning=FALSE}
+trainpr <- cbind(training, data.frame(fit=fmod$fitted.values, 
+                                      res=fmod$residuals ))
+ggplot(data = trainpr, aes(radiation, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+ggplot(data = trainpr, aes(temperature, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+ggplot(data = trainpr, aes(wind, res)) +
+        geom_point() +
+        geom_smooth(size = 0.5, se= FALSE )
+
+```
+
+

@@ -1,6 +1,6 @@
 ---
-title: 'PML Week 2, lecture 2.9 - Predicting with regression and multiple covariates'
-subtitle: "Practical Machine Learning Week 2 : The caret package lecture 2.9"
+title: 'PML - lecture 2.9 - Predicting with regression and multiple covariates'
+subtitle: "Practical Machine Learning Week 2 lecture 2.9 : Multiple regression"
 author:  "Jeff Leek, notes by Bruno Fischer Colonimos"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
 # header-includes: \usepackage{graphicx} # for unmodded template

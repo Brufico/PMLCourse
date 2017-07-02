@@ -1,6 +1,6 @@
 ---
-title: "PML - Week 3 - Bagging, personal tries"
-subtitle: "Practical Machine Learning lecture 3.2 - personal attempts"
+title: "PML - lecture 3.2 - Bagging, personal attempts"
+subtitle: "Practical Machine Learning Week 3 - lecture 3.2 - personal attempts"
 author: "Bruno Fischer Colonimos"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
 fontsize: 12pt
@@ -455,6 +455,5 @@ g
 
 ---
 
-$$\mathbf{Mission \ accomplished}$$
+$$\mathbf{Mission \ 1 \ accomplished}$$
 
----
