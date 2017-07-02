@@ -1,5 +1,6 @@
 ---
-title: "PML- Week 3 - Bagging, personal tries"
+title: "PML - Week 3 - Bagging, personal tries"
+subtitle: "Practical Machine Learning lecture 3.2 - personal attempts"
 author: "Bruno Fischer Colonimos"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
 fontsize: 12pt
@@ -7,8 +8,14 @@ fontsize: 12pt
 documentclass: article
 classoption: a4paper
 geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
+# for the modified latex template
+# header-includes: \usepackage{graphicx} # already in template
+footer:  \thetitle \ \textemdash \ \thepage
 output:
   pdf_document: 
+    # modified latex template
+    # template: test_latex_temp
+    template: latex_temp2.latex
     highlight: monochrome
     number_sections: yes
     toc: yes
@@ -41,8 +48,15 @@ library(knitr)
 library(caret)
 library(party) #trees
 
-
+themechange <- TRUE # change to theme_bw
 specialpalette <- TRUE # controls the colour of the plots
+
+if (themechange) {
+        theme_set(theme_bw() +
+                          theme(plot.title = element_text(hjust = 0.5),
+                                plot.subtitle = element_text(hjust = 0.5)))
+}
+
 
 if (specialpalette) {
         # palette color-blind-friendly: The palette with black (Winston, Cookbook for R,
@@ -94,8 +108,134 @@ dim(ozone)
 kable(head(ozone))
 ```
 
+
 Set up customized bagging with the `bag()` function
 ----------------------------------------------------
+
+### Understanding The `fit`, `pred` and `aggregate` functions
+
+Manual run of the functions
+
+```{r, eval=FALSE}
+
+## fit ==================================================================
+# ctreeBag$fit ==> just fits a model and return a model object
+function (x, y, ...) 
+{
+    loadNamespace("party")
+    data <- as.data.frame(x)
+    data$y <- y
+    party::ctree(y ~ ., data = data)
+}
+
+
+## pred ==================================================================
+# ctreeBag$pred
+function (object, x) 
+{
+    if (!is.data.frame(x)) 
+        x <- as.data.frame(x)
+    obsLevels <- levels(object@data@get("response")[, 1])
+    if (!is.null(obsLevels)) {
+        rawProbs <- party::treeresponse(object, x)
+        probMatrix <- matrix(unlist(rawProbs), ncol = length(obsLevels), 
+            byrow = TRUE)
+        out <- data.frame(probMatrix)
+        colnames(out) <- obsLevels
+        rownames(out) <- NULL
+    }
+    else out <- unlist(party::treeresponse(object, x))
+    out
+}
+
+# ==> basically, for regression pbs, returns the predictions
+# as `predict(object, newdata = x)`
+
+
+## aggregate ==================================================================
+## ctreeBag$aggregate
+function (x, type = "class") 
+{
+    if (is.matrix(x[[1]]) | is.data.frame(x[[1]])) {
+        pooled <- x[[1]] & NA
+        classes <- colnames(pooled)
+        for (i in 1:ncol(pooled)) {
+            tmp <- lapply(x, function(y, col) y[, col], col = i)
+            tmp <- do.call("rbind", tmp)
+            pooled[, i] <- apply(tmp, 2, median)
+        }
+        if (type == "class") {
+            out <- factor(classes[apply(pooled, 1, which.max)], 
+                levels = classes)
+        }
+        else out <- as.data.frame(pooled)
+    }
+    else {
+        x <- matrix(unlist(x), ncol = length(x))
+        out <- apply(x, 1, median)
+    }
+    out
+}
+
+
+
+## Manual run of `aggregate` ====================================
+ 
+
+# some test data
+m1 <-   data.frame(P1 = 10 + abs(rnorm(n=5, 1, 1)),
+                   N1 = - (10 + abs(rnorm(n=5, 1, 1))))
+m2 <-  data.frame(P2 = 20 + abs(rnorm(n=5, 1, 1)),
+                  N2 = - (20 + abs(rnorm(n=5, 1, 1))))
+m3 <-  data.frame(P3 = 30 + abs(rnorm(n=5,0,1)),
+                  N3 = - (30 + abs(rnorm(n=5,1,1))))
+
+
+# begin test
+xx <- list(m1,m2,m3)
+
+
+# step 1 only ----------
+if (is.matrix(xx[[1]]) | is.data.frame(xx[[1]])) {
+        xpooled <- xx[[1]] & NA
+        classes <- colnames(xpooled)
+
+}
+
+xpooled # copy of xx[[1]], with value NA everywhere
+classes # the names of the first 2 columns of xx[[1]]
+
+
+# step 1 + 2 -----------
+
+# if (is.matrix(xx[[1]]) | is.data.frame(xx[[1]])) {
+        xpooled <- xx[[1]] & NA
+        classes <- colnames(xpooled)
+        message(xpooled)
+        message(classes)
+        for (i in 1:ncol(xpooled)) {
+        # i <- 1 # the column index of dframes/matrices xx[[1]], ..., xx[[j]]
+                message(paste("i=",i))
+                tmp <- lapply(xx, function(y, col) {y[, col]}, col = i)
+                tmp # the list of all columns number i of dframes/matrices xx[[j]],
+                    # with each column of dframe/matrix==> one row of tmp
+
+                tmp <- do.call("rbind", tmp) # make matrix with list,
+                # get median of the ith each col of tmp, store in the ith
+                xpooled[, i] <- apply(tmp, 2, median)
+                # median across i, for each j,
+                # and store in the ith column of xpooled
+
+                message ("xpooled = ", xpooled)
+
+                        }
+
+# }
+
+
+```
+
+
 
 
 ### Intended values
@@ -200,11 +340,9 @@ g <- g + geom_line(data = data.frame(ozone = ozone$ozone,
                                      final = predict(treebag,predictors)),
                    aes(ozone, final), color="black", size = 1.5)
 # # final touch
-g <- g + labs(title = "bagged prediction (blue)",
-              subtitle ="resampled predictions (red)") +
-        theme(plot.title = element_text(hjust = 0.5),
-              plot.subtitle = element_text(hjust = 0.5))
-
+g <- g + labs(title = "bagged prediction (Thick)",
+              subtitle ="resampled predictions (thin)") 
+# Display
 g
 ```
 
@@ -309,16 +447,14 @@ g <- g + geom_line(data = data.frame(ozone = ozone$ozone,
                    aes(ozone, final), color="black", size = 1.5)
 # # final touch
 g <- g + labs(title = "bagged prediction (thick)",
-              subtitle ="resampled predictions (thin)") +
-        theme(plot.title = element_text(hjust = 0.5),
-              plot.subtitle = element_text(hjust = 0.5))
-
+              subtitle ="resampled predictions (thin)") 
+# Display
 g
 ```
 
 
 ---
 
-**Mission accomplished**
+$$\mathbf{Mission \ accomplished}$$
 
 ---

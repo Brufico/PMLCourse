@@ -1,3 +1,5 @@
+ctreeBag$fit
+
 
 ctreeBag$pred
 ldaBag$pred
@@ -86,3 +88,5 @@ classes # the names of the first 2 columns of xx[[1]]
                         }
 
 # }
+
+bag
