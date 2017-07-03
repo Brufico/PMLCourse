@@ -1,31 +1,103 @@
 ---
-title: "Practical Machine Learning Course, Week 1"
-author: "Jeff Leaks, notes by Bruno Fischer Colonimos"
+title: "PML - Complete week 1"
+subtitle: "Practical Machine Learning Week 1 - lectures 1 to 9"
+author: "Jeff Leek, notes + revised graphs by Bruno Fischer Colonimos"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
+fontsize: 12pt
+# urlcolor: blue
+documentclass: article
+classoption: a4paper
+geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
+# for the modified latex template
+# header-includes: \usepackage{graphicx} # already in template
+footer:  \thetitle \ \textemdash \ \thepage
 output:
-
-  pdf_document:
+  pdf_document: 
+    # modified latex template
+    # template: test_latex_temp
+    template: latex_temp2.latex
+    highlight: monochrome
     number_sections: yes
     toc: yes
-  urlcolor: blue
-  fontsize: 11pt
-  geometry: top=.9in, left=1in, right=1in, bottom = 1in, footskip = 0.3in
-  
+    toc_depth: 4
+
   html_document: 
-    keep_md: yes
     number_sections: yes
     theme: readable
     toc: yes
+    toc_depth: 4
 ---
 
-```{r setupchunk, include=FALSE, cache = F, echo = F, message = F, warning = F, tidy = F}
-if(!require(knitr)) {
-        install.packages("knitr")
-        library(knitr)
-} 
-# library(knitr)
-# knitr::opts_chunk$set(echo = TRUE)
-opts_chunk$set(echo = TRUE)
+----------------
+
+# Preliminary steps
+
+## Required packages (install before running)
+
+"ggplot2", "reshape2", "knitr", "pander", "psych", "kernlab"
+
+```{r setup, include=FALSE}
+fullwidth <-  6.8
+halfwidth  <-  3.4
+knitr::opts_chunk$set(echo = TRUE, fig.asp= 0.75, fig.width = halfwidth, fig.align="center")
+```
+
+## Libraries and auxiliary code (install before running)
+
+Hidden.
+
+```{r libs, echo =FALSE, warning=FALSE, message=FALSE, results='hide'}
+library(ggplot2)
+library(reshape2)
+library(knitr)
+library(pander)
+library(caret)
+library(psych)
+library(kernlab)
+
+
+themechange <- TRUE # change to theme_bw
+specialpalette <- TRUE # controls the colour of the plots
+
+if (themechange) {
+        theme_set(theme_bw() +
+                          theme(plot.title = element_text(hjust = 0.5),
+                                plot.subtitle = element_text(hjust = 0.5)))
+}
+
+
+if (specialpalette) {
+        # palette color-blind-friendly: The palette with black (Winston, Cookbook for R,
+        # http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/)
+        cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73",
+                        "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+        
+        # modified BFC
+        cbfPalette <- cbbPalette
+        cbfPalette[3] <- cbbPalette[7]
+        cbfPalette[6] <- cbbPalette[3]
+        cbfPalette[8] <- cbbPalette[7]
+        
+        # * `set_default_scale` has been removed. If you want to change the default
+        # scale for an aesthetic, just create a function called
+        # `scale_aesthetic_continuous` or `scale_aesthetic_discrete` that returns the
+        # scale that you want. 
+        
+        scale_colour_discrete <- function(...) {
+                scale_colour_manual(values = cbbPalette)
+        }
+        
+        scale_fill_discrete <- function(...) {
+                scale_fill_manual(values = cbbPalette)
+        }
+        
+        scale_colour_continuous <- function(...) {
+                ggplot2::scale_colour_gradient(
+                        low = "#009900", high = "#FF0000")
+        }
+        
+}
+
 ```
 
 --------------------------------------------------------------------------------
@@ -38,61 +110,37 @@ question -> input data -> features -> algorithm -> parameters -> evaluation
 Example: spam
 -------------
 
-```{r libs, include = FALSE}
-if(!require(psych)) {
-        install.packages("psych")
-        library(psych)
-} 
-if(!require(reshape2)) {
-        install.packages("reshape2")
-        library(reshape2)
-} 
-if(!require(kernlab)) {
-        install.packages("kernlab")
-        library(kernlab)
-} 
+```{r dataspam}
 data("spam")
 # head(spam)
-colnames(spam)
+# colnames(spam)
 
 ```
 
-```{r}
-table(spam$type)
+```{r, fig.asp = 0.5, fig.width=fullwidth}
+pander(table(spam$type))
 
-plot (density(spam$your[spam$type == "nonspam"]), 
-      col="blue",
-      main="",
-      xlab="Frequency of 'your'")
-lines(density(spam$your[spam$type =="spam"]), col="red")
-abline(v=0.5,col="black")
+ggplot(data = spam, aes(x = your)) + 
+        geom_density(mapping = aes(color=type)) +
+        geom_vline(xintercept = 0.5, color= cbfPalette[3]) +
+        labs(x = "Frequency of 'your", title = "Setting a cutoff")
+
 ```
 
 Prediction by setting a cutoff level c
 
 ```{r pred}
 prediction <- ifelse(spam$your > 0.5,"spam","nonspam")
-ptable <- table(prediction,spam$type)/length(spam$type)
-# ptable
-# names(ptable)
-# colnames(ptable)
-# rownames(ptable)
-# str(ptable)
-# kable(ptable)
-kable(ptable, caption = "prediction (row) vs type (column)")
+# ptable <- table(prediction,spam$type)/length(spam$type)
+ptable <- prop.table(table(prediction,spam$type))
+kable(ptable, caption = "prediction (row) vs true type (column)")
 
-# # alternative
-# fptable <-as.data.frame(ptable)
-# kable(
-#         reshape(fptable, idvar = c("prediction"), timevar = c("Var2"), direction = "wide")
-# )
 ```
 
 ```{r}
 accuracy <- ptable[1,1] + ptable[2,2]
 # or
 accuracy <- tr((ptable))
-
 ```
 
 ==> the accuracy of that algorithm is `r accuracy`
@@ -124,7 +172,7 @@ $$question -> \textbf{input data} -> features -> algorithm -> parameters -> eval
 Features 
 ---------
 
-$$question -> input data -> \textbf{features} -> algorithm -> parameters -> evaluation$$
+$$question \ \rightarrow input data \ \rightarrow \textbf{features} \ \rightarrow algorithm \ \rightarrow parameters \ \rightarrow evaluation$$
 
 
 Properties of good features
@@ -142,7 +190,7 @@ Common mistakes
 
 Algorithms matter less than you'd think
 -----------------------------------------
-$$question -> input data -> features -> \textbf{algorithm} -> parameters -> evaluation$$
+$$question \ \rightarrow input data \ \rightarrow features \ \rightarrow \textbf{algorithm} \ \rightarrow parameters \ \rightarrow evaluation$$
 
 Algorithms matter less than you'd think, and this can be a bit of a source of surprise and frustration for some people. It's very typical of many applications  that using a very sensible approach will get you a very large way to solve the problem. And then, getting the absolute best method can improve, but it often doesn't improve that much over, sort of, most good sensible methods. 
 
@@ -190,11 +238,13 @@ Out of Sample Error: The error rate you get on a new data set. Sometimes called 
 Example
 -------
 
-```{r errs}
-library(kernlab); data(spam); set.seed(333)
+```{r errs, fig.asp= 0.5, fig.width = fullwidth, fig.align="center"}
+# library(kernlab); data(spam); 
+set.seed(333)
 smallSpam <- spam[sample(dim(spam)[1],size=10),]
-spamLabel <- (smallSpam$type == "spam")*1 + 1
-plot(smallSpam$capitalAve, col=spamLabel)
+
+ggplot(cbind(data.frame(index = 1:nrow(smallSpam)), smallSpam),
+                  aes(x = index,y = capitalAve, colour=type)) + geom_point(size = 2)
 
 ```
 
@@ -492,6 +542,27 @@ or
 (x = 1- specificity ?)
 
 
+```{r , Echo = FALSE, fig.asp=0.5, fig.width=fullwidth}
+# function
+
+rocfun <- function(x) {x^0.3}
+bestrocfun <- function(x) {x^0.01}
+guessfun <- function(x) {x}
+
+ggplot(data = data.frame(x = 0), mapping = aes(x = x)) + 
+        stat_function(fun = rocfun, aes(color = "a) An ROC curve")) +
+        stat_function(fun = bestrocfun, aes(color = "b) better ROC curve")) +
+        stat_function(fun = guessfun, aes(color = "c) Raw guessing ROC curve (worse)")) +
+        xlim(0, 1)+ ylim(0, 1) +
+        labs(y = "y = pr(True +) = sensitivity", 
+             x = "x = pr(false +) = (1 - specificity)",
+             title = "ROC curves") +
+        scale_color_manual(name = "Examples ROC", values = cbfPalette)
+        
+```
+
+
+
 Area under the curve (AUC)
 --------------------
 
@@ -522,8 +593,8 @@ Cross-validation
 
 1. Use the training set
 2. (Sub-)Split it into training/test sets
-3. Build a model on the training set
-4. Evaluate on the test set
+3. Build a model on the (sub)training set
+4. Evaluate on the (sub)test set
 5. Repeat and average the estimated errors
 
 
