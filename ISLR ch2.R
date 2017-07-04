@@ -12,6 +12,10 @@
 #'             geometry: top=.9in, left=1in, right=1in, bottom = 1in, footskip = 0.3in
 #' ---
 
+# libs
+library(pander)
+
+
 
 #' Outer product of vector/arrays
 #' =============================
@@ -24,7 +28,10 @@ x %o% x
 # Power Tables
 y <- 2:8;
 names(y) <- paste(y,":", sep = "")
-outer(y, x, "^")
+z <- outer(y, x, "^")
+str(z)
+pander(z)
+
 
 # Other table
 outer(month.abb, 1999:2003, FUN = "paste")
@@ -56,7 +63,7 @@ data(Auto)
 attach(Auto)
 
 plot(horsepower , mpg)
-identify (horsepower ,mpg ,name)
+identify(horsepower ,mpg ,name)
 
 
 
@@ -131,17 +138,36 @@ mostfrequent(v)
 
 
 # classification function
-classify <- function(x, k, dat, classname){
+classify <- function(x, k, dat, classvarname){
         # get the k min distances (indices)
         kdist <- kmin(alldist(x, dat), k)
         # get the corresponding classes
-        classes <- dat[[classname]][kdist]
+        classes <- dat[[classvarname]][kdist]
         # return most frequent class
         mostfrequent(classes)
 
 }
 
+
 # test point
 zro <- c(0,0,0)
 classify(zro, 1, dt, "Y")
 classify(zro, 3, dt, "Y")
+
+
+#' Exercise 8: college
+#' ===================
+#'
+
+data("College")
+dim(College)
+# Already done
+rownames(College)
+
+summary(College)
+
+# Explore  .... keep for afterwards.
+#
+# 8 - Auto
+#
+# 10 - Boston
