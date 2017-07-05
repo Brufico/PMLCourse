@@ -32,18 +32,23 @@
 #' Preliminary steps
 #' =================
 #'
-#' ## Required packages (install before running)
+#' Required packages (install before running)
+#' ------------------------------------------
+#'
+#' "AppliedPredictiveModeling", "pgmm", "ElemStatLearn",
 #'
 
-#+ setupchunk
+#+ setupchunk, echo = FALSE, results = "hide"
 fullwidth <-  6.8
 halfwidth  <-  3.4
 knitr::opts_chunk$set(echo = TRUE, fig.asp= 0.75, fig.width = halfwidth, fig.align="center", out.width = "0.48\\textwidth")
 
 
-#' ## Libraries and auxiliary code (install before running)
+#'
+#' Libraries and auxiliary code (install before running)
+#' -----------------------------------------------------
 
-#' Hidden.
+#' The code is hidden (not interesting)
 
 #+ libs1, echo = FALSE, warning = FALSE, message = FALSE, results = "hide"
 
@@ -96,11 +101,10 @@ if (specialpalette) {
 
 }
 
-#' --------------------------------------------------------------------------------
-
+#' *************************************************************************
 #'
-#' Question 1
-#' ==========
+#' Question 1 : Cell Body Segmentation data (AppliedPredictiveModeling package)
+#' ====================================================================
 #'
 library(AppliedPredictiveModeling)
 data(segmentationOriginal)
@@ -145,7 +149,7 @@ modFit <- train(Class ~ .,method="rpart",data=training)
 print(modFit$finalModel)
 
 
-#+ printtree, fig.asp = 2
+#+ printtree, fig.asp = 1
 
 fancyRpartPlot(modFit$finalModel,
                main = "Tree",
@@ -280,8 +284,8 @@ predict(modFit, newdata = newx[4,] )
 
 
 #'
-#' Question 3
-#' ==========
+#' Question 3: Italian Olive Oil (pgmm package)
+#' ==============================
 #'
 #' Data
 #' ----
@@ -297,13 +301,21 @@ olive <- olive[,-1]
 #' Fit a CART model
 #' ----------------
 #'
+#' ### fitting a model
+#'
 
 #+ createtre_eolive, cache = TRUE
 modFit <- train(Area ~ .,method="rpart",data=olive)
+
+
+
+#'
+#' ### Printing
+#'
+
+#+ printtree_olive, fig.asp = 1, fig.width = fullwidth
+
 print(modFit$finalModel)
-
-
-#+ printtree_olive, fig.asp = 0.75, fig.width = fullwidth
 
 fancyRpartPlot(modFit$finalModel,
                main = "Tree",
@@ -326,6 +338,9 @@ predict(modFit, newdata = newdata)
 #' Redo all, but converting Area into a factor
 #' -------------------------------------------
 #'
+#'
+#' ### fitting a model
+#'
 
 #+ createtree2
 olive$Area <- as.factor(olive$Area)
@@ -333,24 +348,29 @@ modFit <- train(Area ~ .,method="rpart",data=olive)
 print(modFit$finalModel)
 
 
-#+ printtree2, fig.asp = 0.75, fig.width = fullwidth
+#'
+#' ### Printing
+#'
+#+ printtree2, fig.asp = 1, fig.width = fullwidth
+print(modFit$finalModel)
 
 fancyRpartPlot(modFit$finalModel,
                main = "Tree",
                palettes=c("Greys", "Oranges", "Reds") )
 
 #'
-#'  Predict2
+#' ### Prediction
 #'
 
 newdata = as.data.frame(t(colMeans(olive[-1])))
 predict(modFit, newdata = newdata)
 
+#' This time, it makes sense.
 
 
 #'
-#' Question 4
-#' ==========
+#' Question 4: South African Heart Disease Data (ElemStatLearn package)
+#' =============================================
 #'
 #' Data
 #' ----
@@ -425,8 +445,8 @@ c(mctest, mctrain)
 
 
 #'
-#' Question 5
-#' ==========
+#' Question 5 : Vowel Recognition (ElemStatLearn Package)
+#' ======================================================
 #'
 #' Data
 #' ----
@@ -450,17 +470,18 @@ modFit <- train(y~ ., data=vowel.train, method="rf", prox=TRUE) # prox?
 modFit
 
 
+#'
 #' Variable importance
+#' --------------------
+#'
+#' reference: [http://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm#ooberr](http://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm#ooberr)
+#'
 #+ , warning=FALSE
 vi <- varImp(modFit)
 vi
-
-knitr::kable(vi$importance[])
-
+# display in text
 vio <- order(vi$importance$Overall,  decreasing = TRUE)
 vin <- rownames(vi$importance)[vio]
-vin
-pander(vin)
 
-# conclusion: almost the last: `r pander(vin)`
+#' __Conclusion__: almost the last answer: `r pander(vin)`
 
