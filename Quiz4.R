@@ -14,17 +14,21 @@
 #' General libraries
 #' ==============================================
 #'
-#'
-#'
-#' Question 1 : Vowel Recognition (Deterding data)
-#' ==============================================
-#'
+
 
 library(ggplot2)
 library(caret)
 library(gbm)# Generalized Boosted regression Models
 library(plyr)
 library(dplyr)
+
+
+
+#'
+#'
+#' Question 1 : Vowel Recognition (Deterding data)
+#' ==============================================
+#'
 
 
 #' specific libraries + Data
@@ -264,5 +268,250 @@ knitr::kable(t(data.frame(RF = accget(cfm_rf),
 #'
 
 #' Answer c: \
-#' Stacked Accuracy: 0.80 is better than
-#' random forests and lda and the same as boosting.
+#' Stacked Accuracy: 0.80 is better than random forests and lda and the same as boosting.
+#'
+#' (BUT there seems to be a MUCH bigger problem)
+
+
+'
+#' ***************************************************************************
+
+
+#'
+#' Q3: Concrete
+#' =================================
+#'
+#'
+#' Data
+#' -----
+#
+
+set.seed(3523)
+library(AppliedPredictiveModeling)
+data(concrete)
+inTrain = createDataPartition(concrete$CompressiveStrength, p = 3/4)[[1]]
+training = concrete[ inTrain,]
+testing = concrete[-inTrain,]
+
+# modify order of cols
+# head(concrete)
+#concrete <- cbind(concrete[9], concrete[-9])
+# tail(concrete)
+
+#'
+#' Lasso
+#' -----
+
+set.seed(233)
+
+lmodel <- train(x=training[-9], y=training[[-9]],
+                method = "lasso",
+                trControl = trainControl(method = "cv", number = 5))
+
+
+lmodel <- train(CompressiveStrength ~ . , data=training,
+                method = "lasso",
+                trControl = trainControl(method = "cv", number = 5))
+
+print(lmodel)
+
+
+print(lmodel$finalModel)
+
+windows()
+plot.enet(lmodel$finalModel)
+dev.off()
+
+
+#'
+#' Conclusion
+#' ----------
+#'
+#' Answer; Cement
+#'
+
+
+#' ***************************************************************************
+
+
+#'
+#' Q4: number of visitors to the instructors blog
+#' =================================
+#'
+#'
+#' Data
+#' -----
+
+#'
+#' ### Download
+#'
+datedwn <- date()
+datadir <- "data"
+fname <- "gaData.csv"
+fpath <- file.path(datadir, fname)
+url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/gaData.csv"
+
+retrievefile = TRUE
+
+if (retrievefile) {
+        download.file(url = url, destfile = fpath)
+}
+
+#' ### Read in & split data
+
+library(lubridate) # For year() function below
+dat = read.csv(fpath)
+training = dat[year(dat$date) < 2012,]
+testing = dat[(year(dat$date)) > 2011,]
+tstrain = ts(training$visitsTumblr)
+
+# added
+tstest <- ts(testing$visitsTumblr)
+
+
+#' better way to split ? Yes, Later
+
+
+
+
+#'
+#' Analysis
+#' --------
+#'
+library(forecast)
+
+# model fitting
+batmod <- bats(tstrain)
+# forecasting
+fcast <- forecast(batmod, levels=c(0.95) , h = 235)
+
+#
+plot(fcast)
+lines(tstest, col="red") # problem
+
+sfcast <- summary(fcast)
+
+fmin <- sfcast$`Lo 95`
+fmax <- sfcast$`Hi 95`
+
+# % out of confidence limits
+sum(tstest > fmax | tstest < fmin)/length(tstest) # 0.038
+
+#'
+#' Conclusion
+#' ----------
+
+#' . For how many of the testing points is the true value
+#' within the 95% prediction interval bounds? ==> 96%
+
+#' ****************************************************************
+#'
+#' Q again (other selection of the training and testing sets)
+#' ==============================================================
+#'
+
+dat = read.csv(fpath)
+# training = dat[year(dat$date) < 2012,]
+# testing = dat[(year(dat$date)) > 2011,]
+tsdat = ts(dat$visitsTumblr)
+
+tstrain <- window(tsdat,start=1,end=365)
+tstest <- window(tsdat,start=366,end=(600))
+
+
+
+# model fitting
+batmod <- bats(tstrain)
+# forecasting
+fcast <- forecast(batmod, levels=c(0.95) , h = 235)
+
+#
+plot(fcast)
+lines(tstest, col="red") # problem
+
+
+
+sfcast <- summary(fcast)
+
+fmin <- sfcast$`Lo 95`
+fmax <- sfcast$`Hi 95`
+
+# % out of confidence limits
+sum(tstest > fmax | tstest < fmin)/length(tstest) # 0.038
+
+
+
+
+#'
+#' Q5 Concrete again
+#' ================
+#'
+#' Model : svmLinear2 (package e1071)
+#'
+
+#' Data
+#' _______
+
+set.seed(3523)
+library(AppliedPredictiveModeling)
+data(concrete)
+inTrain = createDataPartition(concrete$CompressiveStrength, p = 3/4)[[1]]
+training = concrete[ inTrain,]
+testing = concrete[-inTrain,]
+
+
+head(training)
+
+
+set.seed(325)
+# try1
+mod <- train(CompressiveStrength ~ .,
+             data = training,
+             method="svmLinear2" )
+# try2
+mod <- train(x = training[-9], y = training[[9]],
+             method="svmLinear2" )
+
+
+#prediction
+predsvm <- predict(mod, testing)
+
+# RMSE
+postResample(pred=predsvm, obs = testing$CompressiveStrength)
+
+
+# ANs = 10.62 ==> 6.93 est *FAUX*
+#
+#
+#
+
+#' ********************************
+#'
+#' Answers
+#' ==========
+
+
+# Q1: **************
+# #' Answer c: \
+#' RF Accuracy = 0.6082 , GBM Accuracy = 0.5152 , Agreement Accuracy = 0.6361
+#'
+#' Q2 **************
+#' #' Answer c: \
+#' Stacked Accuracy: 0.80 is better than random forests and lda and the same as boosting.
+#'
+#' Q3 ***********************
+#' Cement
+#'
+#' Q4 *********************
+#' ' #' . For how many of the testing points is the true value
+#' within the 95% prediction interval bounds? ==> 96%
+#'
+#' Q5
+#' # ANs ( calcul) = 10.62
+#'
+#' ==> 6.93 est *FAUX*
+#' ==> 6.72 OK
+#' 107.44
+#' 11543.39
+#
+

@@ -158,7 +158,7 @@ tcontrol_cv <- trainControl(method = "cv", number = number)
 
 
 
-modrf2 <- train( diagnosis ~ . , data = training,
+modrf2 <- train( x=training[-1], y=training[[1]],
                method = "rf",
                trControl = trainControl(method = "cv", number = number))
 
@@ -167,13 +167,13 @@ modrf2 <- train( diagnosis ~ . , data = training,
 
 
 #+ modelfit2q2, cache = TRUE, results = "hide", dependson = "modelfitparamsq2"
-modgbm2 <- train(diagnosis ~ . , data = training,
+modgbm2 <- train(x=training[-1], y=training[[1]],
                 method = "gbm",
                 trControl = tcontrol_cv,
                 verbose = FALSE)
 
 #+ modelfit3q2, cache = TRUE, results = "hide", dependson = "modelfitparamsq2"
-modlda2 <- train(diagnosis ~ . , data = training,
+modlda2 <- train(x=training[-1], y=training[[1]],
                 method = "lda",
                 trControl = tcontrol_cv )
 
@@ -211,6 +211,19 @@ confusionMatrix(trset$predrf,trset$diagnosis)$table
 confusionMatrix(trset$predlda,trset$diagnosis)$table
 
 confusionMatrix(trset$predgbm,trset$diagnosis)$table
+
+
+numdif <- function(a,b){
+        sum(a != b)
+}
+
+with(trset,
+     c(numdif(predrf,predgbm),
+       #numdif(predrf,predlda),
+       #numdif(predgbm,predlda),
+       numdif(predgbm,diagnosis)
+     )
+)
 
 
 
