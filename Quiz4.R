@@ -2,14 +2,30 @@
 #' title: Quiz4
 #' author: BFC
 #' date: 21/07/2017
+#' fontsize: 12pt
+#' urlcolor: blue
+#' linkcolor: red
+#' documentclass: article
+#' classoption: a4paper
+#' geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
 #' output:
-#'   html_document:
-#'      number_sections: yes
-#'      theme: readable
-#'      toc: yes
+#'   pdf_document:
+#'     highlight: monochrome
+#'     number_sections: yes
+#'     toc: yes
+#'     toc_depth: 3
+#' # html_document:
+#' #    number_sections: yes
+#' #    theme: readable
+#' #    toc: yes
 #' ---
 #'
-#' -------------
+# + setup
+knitr::opts_chunk$set(echo = TRUE, fig.show = "hold", fig.width = 3.5, fig.asp = 1, fig.align = "center")
+
+
+
+#'*************************************************
 #'
 #' General libraries
 #' ==============================================
@@ -115,7 +131,9 @@ knitr::kable(t(data.frame(RF = accget(cfm_rf),
 
 
 
+#'
 #' ***************************************************************************
+#'
 
 
 #'
@@ -266,14 +284,13 @@ knitr::kable(t(data.frame(RF = accget(cfm_rf),
 #' Conclusion
 #' -----------
 #'
-
 #' Answer c: \
 #' Stacked Accuracy: 0.80 is better than random forests and lda and the same as boosting.
 #'
 #' (BUT there seems to be a MUCH bigger problem)
+#'
 
 
-'
 #' ***************************************************************************
 
 
@@ -301,26 +318,33 @@ testing = concrete[-inTrain,]
 #'
 #' Lasso
 #' -----
+#'
 
 set.seed(233)
 
-lmodel <- train(x=training[-9], y=training[[-9]],
+lmodel <- train(x=training[-9], y=training[[9]],
                 method = "lasso",
                 trControl = trainControl(method = "cv", number = 5))
 
+#
+# lmodel <- train(CompressiveStrength ~ . , data=training,
+#                 method = "lasso",
+#                 trControl = trainControl(method = "cv", number = 5))
 
-lmodel <- train(CompressiveStrength ~ . , data=training,
-                method = "lasso",
-                trControl = trainControl(method = "cv", number = 5))
-
+#'
+#' ### see caret model
 print(lmodel)
 
+#'
+#' ### see finalmodel
 
 print(lmodel$finalModel)
 
-windows()
+#' Plot coeff paths
+#'
+#+ plotpaths, fig.width = 7, fig.asp =0.75
 plot.enet(lmodel$finalModel)
-dev.off()
+
 
 
 #'
@@ -351,7 +375,7 @@ fname <- "gaData.csv"
 fpath <- file.path(datadir, fname)
 url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/gaData.csv"
 
-retrievefile = TRUE
+retrievefile = FALSE  # (downloaded already)
 
 if (retrievefile) {
         download.file(url = url, destfile = fpath)
@@ -368,16 +392,15 @@ tstrain = ts(training$visitsTumblr)
 # added
 tstest <- ts(testing$visitsTumblr)
 
-
 #' better way to split ? Yes, Later
-
-
-
+#'
 
 #'
 #' Analysis
 #' --------
 #'
+
+#+ getfcastdata
 library(forecast)
 
 # model fitting
@@ -385,12 +408,39 @@ batmod <- bats(tstrain)
 # forecasting
 fcast <- forecast(batmod, levels=c(0.95) , h = 235)
 
-#
+#+ fcastplot, fig.width = 7, fig.asp = 0.5
 plot(fcast)
 lines(tstest, col="red") # problem
 
+#+ fcastsummary, results = "hide"
 sfcast <- summary(fcast)
 
+#+ fcastelements,
+
+# fcast model
+# names(fcast)
+# [1] "model"     "mean"      "level"     "x"         "series"    "upper"     "lower"     "fitted"
+# [9] "method"    "residuals"
+
+fcast$method
+fcast$model
+fcast$level
+
+head(fcast$mean)
+fcast$series
+head(fcast$x)
+head(fcast$upper)
+head(fcast$lower)
+head(fcast$fitted)
+
+
+# objct summary(forecast)
+names(sfcast)
+# "Point Forecast" "Lo 80"          "Hi 80"          "Lo 95"          "Hi 95"
+head(sfcast)
+
+
+# using sfcast to answer th question
 fmin <- sfcast$`Lo 95`
 fmax <- sfcast$`Hi 95`
 
@@ -404,9 +454,10 @@ sum(tstest > fmax | tstest < fmin)/length(tstest) # 0.038
 #' . For how many of the testing points is the true value
 #' within the 95% prediction interval bounds? ==> 96%
 
+#'
 #' ****************************************************************
 #'
-#' Q again (other selection of the training and testing sets)
+#' Redoing Q4 again (with better selection method for the training and testing sets)
 #' ==============================================================
 #'
 
@@ -425,14 +476,40 @@ batmod <- bats(tstrain)
 # forecasting
 fcast <- forecast(batmod, levels=c(0.95) , h = 235)
 
-#
-plot(fcast)
+#+ fcastplot2, fig.width = 7, fig.asp = 0.5
+plot(fcast, ylim = c(-200, 1500))
 lines(tstest, col="red") # problem
 
 
-
+#+ fcastsummary2, results = "hide"
 sfcast <- summary(fcast)
 
+#+ fcastelements2,
+
+# fcast model
+# names(fcast)
+# [1] "model"     "mean"      "level"     "x"         "series"    "upper"     "lower"     "fitted"
+# [9] "method"    "residuals"
+
+fcast$method
+fcast$model
+fcast$level
+
+head(fcast$mean)
+fcast$series
+head(fcast$x)
+head(fcast$upper)
+head(fcast$lower)
+head(fcast$fitted)
+
+
+# object summary(forecast)
+names(sfcast)
+# "Point Forecast" "Lo 80"          "Hi 80"          "Lo 95"          "Hi 95"
+head(sfcast)
+
+
+# using sfcast to answer th question
 fmin <- sfcast$`Lo 95`
 fmax <- sfcast$`Hi 95`
 
@@ -446,7 +523,7 @@ sum(tstest > fmax | tstest < fmin)/length(tstest) # 0.038
 #' Q5 Concrete again
 #' ================
 #'
-#' Model : svmLinear2 (package e1071)
+#' Use Model : svmLinear2 (package e1071)
 #'
 
 #' Data
@@ -465,10 +542,11 @@ head(training)
 
 set.seed(325)
 # try1
-mod <- train(CompressiveStrength ~ .,
-             data = training,
-             method="svmLinear2" )
-# try2
+# mod <- train(CompressiveStrength ~ .,
+#              data = training,
+#              method="svmLinear2" )
+
+# try2 (both work)
 mod <- train(x = training[-9], y = training[[9]],
              method="svmLinear2" )
 
@@ -481,13 +559,12 @@ postResample(pred=predsvm, obs = testing$CompressiveStrength)
 
 
 # ANs = 10.62 ==> 6.93 est *FAUX*
-#
-#
-#
+#            ==> 6.72 OK (ne pas chercher à comprendre)
+
 
 #' ********************************
 #'
-#' Answers
+#' Answers Summary
 #' ==========
 
 
