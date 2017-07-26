@@ -1,0 +1,75 @@
+---
+title: "How Well Do You Exercise?"
+subtitle: "Practical Machine Learning - Course Project"
+author:  "Bruno Fischer Colonimos"
+abstract: |
+        The course project consists in building a prediction model of the quality of 
+        execution of a training exercise based on accelerometer seonsors data.
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+fontsize: 12pt
+urlcolor: blue
+linkcolor: red
+# documentclass: article
+# classoption: a4paper
+# geometry: "left=1.5cm,right=1.5cm,top=1.5cm,bottom=2cm,footskip=1cm"
+output:
+  # pdf_document: 
+  #   highlight: monochrome
+  #   number_sections: yes
+  #   toc: yes
+  #   toc_depth: 4
+  html_document: 
+    number_sections: yes
+    theme: readable
+    toc: yes
+    toc_depth: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+The Problem, and the Data
+=========================
+
+The context
+-----------
+The aim of original study was to determine, based on sensor measures, if an exercise has been correctly performed. This is coded as A (correct) or B , C, D or E (different types of mistakes). We are reqquired to predict the value of this "Classe", for a test set of sensor measures.
+
+Understanding the data
+----------------------
+We have to define the work at hand and specify the possible features to use, accordig to the context of the study, the available dataset, and the required results: predicting the variable "classe" for 20 observations in the test set. 
+
+
+### The training dataset
+There are two types of observations, and five types of features
+
+* Two types of observational units:
+    * Each row of the data frame for which  new_window == no represents a set of "raw" sensor measures made at the same point in time, and the "Classe", which qualifies the exercise repetition this observation belongs to.
+    * Each row such that new_window == yes represents a) a set of the same measurements, but also b) a set of summaries (average, std dev, min...etc) of these measurement, computed on a series of consecutive observations (a "window").
+* Five types of features, describing:
+    * subject (user_name)
+    * chronological information (raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, num_window)
+    * raw sensor values (roll_belt, pitch_belt, ..., magnet_forearm_z)
+    * aggregate summaries of these values, computed on a window, and only defined if new_window == yes: (min_roll_belt , kurtosis_picth_arm, ..., var_yaw_dumbbell...)
+    * the "Classe" of the exercise the observation belongs to. 
+
+### The test dataset: information available at the time of prediction
+
+The test dataset is similar, but:
+* Of course "classe" is missing, ( we wish to predict its value ).
+* We have only 20 observations
+* None of these is such that new_window == 0, and the corresponding summaries cannot be reconstructed, as we do not have the other observations of the same "window".
+* we do not know other time-related  obeservations (of the same or from a previous window, for example)
+
+Consequences : Usable features
+------------------------------
+Consequently, chronological and summary information is not usable (because not available when predicting). We can potentially use only: **raw sensor values** variables and **user_name**, but user_name is debatable, as new observations might come from new subjects, for which no info is available in the training dataset. It is the case in the test set with the subhect named "charles".
+
+Note: As we will not use chronological information, splitting the data will be easy.  
+
+Data preparation
+-----------------
+We eliminate from both datasets the variables that we don't use, and we keep all the rows. We then see that we don't have missing values any more.
