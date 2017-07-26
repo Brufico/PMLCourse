@@ -65,6 +65,8 @@ if (retrievedata) {
         download.file(urltrain, trainpath)
         download.file(urltest, testpath)
 }
+
+
 #'
 #' Read in the data
 #' ----------------
@@ -72,9 +74,56 @@ if (retrievedata) {
 training <- read.csv(trainpath)
 testing <- read.csv(testpath)
 
-str(training)
-
+# get the variable names
 varnames <- colnames(training)
+
+#'
+#' Elimination of unwanted columns
+#' -------------------------------
+
+# Summary variable patterns
+sumpat <- c("kurtosis_","skewness_", "max_", "min_", "amplitude_", "var_", "avg_", "stddev_")
+
+# identify the summary columns
+lmatch <- Reduce(f = function(x,y) {x | y},
+                 init= FALSE,
+                 x = lapply(seq_along(sumpat),
+                            FUN= function(i) {grepl(sumpat[i], varnames)}))
+
+
+
+
+# length(varnames[!lmatch])
+
+# remove summary columns
+training <- training[ ,!lmatch]
+# remove id + chronological info
+training <- training[-(1:7)]
+
+
+# remove "class" column and store apart
+trainclass <- training[[(ncol(training))]] # vector
+training <- training[-(ncol(training))]
+
+
+
+# do the same for the testing set:*************
+varnametst <- colnames(testing)
+
+# identify the summary columns
+lmatchtst <- Reduce(f = function(x,y) {x | y},
+                 init= FALSE,
+                 x = lapply(seq_along(sumpat),
+                            FUN= function(i) {grepl(sumpat[i], varnametst)}))
+
+
+# remove summary columns
+testing <- testing[!lmatchtst]
+# remove id + chronological info
+testing <- testing[-(1:7)]
+
+
+# Check variable types:
 sapply(seq_along(training) ,
        FUN = function(i) {
         varname <- varnames[i]
@@ -82,4 +131,40 @@ sapply(seq_along(training) ,
         list(varname, typeof(variable))})
 
 
-grep()
+# ============================================================================
+
+#'  Exploration
+#' =============
+
+# Investigate the class
+tc <-  table(trainclass)
+tc
+
+
+# principal components
+
+prc <- prcomp(training)
+names(prc)
+
+round(prc$sdev/ sum(prc$sdev) * 100, 0)
+
+
+
+df <- as.data.frame(prc$x[, 1:10])
+colnames(df)
+df <- cbind(df, data.frame(classe=trainclass))
+
+
+# random sample for a subset of df
+dfred <- df[sample(x = 1:nrow(df), size = 5000 ), ]
+
+table(dfred$classe)
+
+
+ggplot(data = dfred, aes(PC1, PC2, color = classe)) + geom_point(alpha = 0.5)
+
+ggplot(data = dfred, aes(PC2, PC3, color = classe)) + geom_point(alpha = 0.5)
+
+ggplot(data = dfred, aes(PC3, PC4, color = classe)) + geom_point(alpha = 0.5)
+
+ggplot(data = dfred, aes(PC1, PC3, color = classe)) + geom_point(alpha = 0.5)
